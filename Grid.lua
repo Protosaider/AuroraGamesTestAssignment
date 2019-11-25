@@ -1,8 +1,5 @@
 local Grid = {
-    width = 0,
-    height = 0,
-    values = {},
-    defaultValue = nil,
+
 }
 
 local NIL = "nil"
@@ -12,6 +9,7 @@ function Grid:new(o, width, height, defaultValue)
     -- @TODO check type
     o.width = width or 0
     o.height = height or 0
+    o.values = {}
 
     if o.width == o.height and o.width == 0 then
         return nil
@@ -99,10 +97,55 @@ function Grid:getColumn(x)
     return column
 end
 
---up, left, up-left, etc.
--- function Grid:getNeighbour(x, y, direction)
-    
--- end
+local EDirection = require("EDirection")
+
+local directionVectors = {}
+directionVectors[EDirection.Up] =           {0, -1}
+directionVectors[EDirection.Right]  =       {1, 0}
+directionVectors[EDirection.Down] =         {0, 1}
+directionVectors[EDirection.Left] =         {-1, 0}
+directionVectors[EDirection.UpperRight] =   {1, -1}
+directionVectors[EDirection.LowerRight] =   {1, 1}
+directionVectors[EDirection.LowerLeft] =    {-1, 1}
+directionVectors[EDirection.UpperLeft] =    {-1, -1}
+
+function Grid:getNeighbour(x, y, direction)
+    assert(type(direction) == type(EDirection), "direction value is not a EDirection")
+
+    if self:isOutside(x, y) then
+        error "Coordinates are outside the grid"
+    end
+
+    local neighbourX = x + directionVectors[direction][1]
+    local neighbourY = y + directionVectors[direction][2]
+
+    local result, value = self:getValue(neighbourX, neighbourY)
+
+    if not result then
+        error "Neighbour's coordinates are outside the grid"
+    end
+
+    return value
+end
+
+function Grid:swap(fromX, fromY, toX, toY)
+
+    local result, swap = self.values[fromX][fromY]
+
+    if not result then
+        error "Coordinates (from) are outside the grid"
+    end
+
+    result, self.values[fromX][fromY] = self.values[toX][toY]
+
+    if not result then
+        self.values[fromX][fromY] = swap
+        error "Coordinates (to) are outside the grid"
+    end
+
+    self.values[toX][toY] = swap
+
+end
 
 -- --verticalAndHorizontal, Diagonal, Both
 -- function Grid:getNeighbours(x, y, neighboursLocation)
