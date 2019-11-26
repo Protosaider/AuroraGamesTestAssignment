@@ -1,5 +1,5 @@
-local N = 11
-local M = 12
+local N = 11 --width (> 0)
+local M = 12 --height (>= 10)
 
 local input = io.stdin
 
@@ -113,8 +113,16 @@ local cryst = Crystal:new(ECrystalType.Base, ECrystalColor[math.random(#ECrystal
 print(cryst.color)
 
 
+local EDirection = require("EDirection")
+local EDirectionHelper = require("EDirectionHelper")
+
+
+print()
+local dir = EDirectionHelper.opposite(EDirection.Up)
+print(dir)
+
 local gameField = require("GameField")
-local field = gameField:new(N, M, ' ', '|', '-', '\n')
+local field = gameField:new(N, M, ' ', '|', '-', '\n', '*')
 field:dump()
 
 repeat

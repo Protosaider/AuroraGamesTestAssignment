@@ -131,23 +131,53 @@ function Grid:getNeighbour(x, y, direction)
     return value
 end
 
-function Grid:swap(fromX, fromY, toX, toY)
+function Grid:swap(fromX, fromY, direction)
+    local toX = fromX + directionVectors[direction][1]
+    local toY = fromY + directionVectors[direction][2]
+    return self:swap(fromX, fromY, toX, toY)
+end
 
-    local result, swap = self:getValue(fromX, fromY)
+function Grid:swap(fromX, fromY, toX, toY)
+    local result, temp = self:getValue(fromX, fromY)
 
     if not result then
-        error "Coordinates (from) are outside the grid"
+        -- error "Coordinates (from) are outside the grid"
+        return false, "From"
     end
 
     result, self.values[fromX][fromY] = self:getValue(toX, toY)
 
     if not result then
-        self.values[fromX][fromY] = swap
-        error "Coordinates (to) are outside the grid"
+        self.values[fromX][fromY] = temp
+        -- error "Coordinates (to) are outside the grid"
+        return false, "To"
     end
 
-    self.values[toX][toY] = swap
+    self.values[toX][toY] = temp
 
+    return true, {from = {x = fromX, y = fromY}, to = {x = toX, y = toY}}
+end
+
+function Grid:swapUnsafe(fromX, fromY, toX, toY)
+    local temp = self.values[fromX][fromY]
+    self.values[fromX][fromY] = self.values[toX][toY]
+    self.values[toX][toY] = temp
+
+    return {from = {x = fromX, y = fromY}, to = {x = toX, y = toY}}
+end
+
+function Grid:findValues(filter)
+    local values = {}
+
+    for y, value in ipairs(self.values) do
+        for x, val in ipairs(value) do
+            if filter(val) then
+                values[#values+1] = {x = x, y = y, value = val}
+            end
+        end
+    end
+
+    return values
 end
 
 function Grid:iterate(predicate)
@@ -192,6 +222,32 @@ function Grid:getIterator()
 
     return iterator, initialState
 end
+
+
+-- Fisher-Yates
+function Grid:shuffle()
+
+    local size = self.height * self.width
+
+    -- for i from n−1 downto 1 do
+    --     j ← random integer such that 0 ≤ j ≤ i
+    --     exchange a[j] and a[i]
+
+    for i = size - 1, 2, -1 do
+        local fromY = (i // self.width) + 1; --height
+        local fromX = (i % self.width) + 1; --width
+
+        local random = math.random(0, i)
+        local toY = (random // self.width) + 1;
+        local toX = (random % self.width) + 1;
+
+        local temp = self.values[fromY][fromX]
+        self.values[fromY][fromX] = self.values[toY][toX]
+        self.values[toY][toX] = temp
+    end
+
+end
+
 
 -- --verticalAndHorizontal, Diagonal, Both
 -- function Grid:getNeighbours(x, y, neighboursLocation)

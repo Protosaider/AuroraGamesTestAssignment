@@ -8,6 +8,23 @@ local Crystal = {
     -- color = '@'
 }
 
+
+-- local OnCrystalDestroyed = {}
+-- setmetatable(OnCrystalDestroyed, {__mode = "k"})
+
+-- function Crystal:setOnCrystalDestroyed(func)
+--     if type(func) == 'function' then
+--         OnCrystalDestroyed[self] = func
+--         return true
+--     end
+--     return false
+-- end
+
+-- function Crystal:callOnCrystalDestroyed(...)
+--     return OnCrystalDestroyed[self](...)
+-- end
+
+
 function Crystal:new(crystalType, color)
     local o = {}
 
@@ -17,6 +34,10 @@ function Crystal:new(crystalType, color)
     o.type = crystalType
     o.color = color
 
+    -- OnCrystalDestroyed[o] = function ()
+    --     return nil
+    -- end
+
     self.__index = self
     self.__tostring = function ()
         return '{' .. tostring(o.type) .. ", " .. tostring(o.color) .. '}'
@@ -24,5 +45,6 @@ function Crystal:new(crystalType, color)
     setmetatable(o, self)
     return o
 end
+
 
 return Crystal
