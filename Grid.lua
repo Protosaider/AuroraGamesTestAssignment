@@ -22,10 +22,11 @@ function Grid:new(o, width, height, defaultValue)
         o.values[x] = {}
     end
 
-    o:setAllDefault()
-
     self.__index = self
     setmetatable(o, self)
+
+    o:setAll()
+
     return o
 end
 
@@ -38,7 +39,7 @@ function Grid:isOutside(x, y)
 end
 
 function Grid:getValue(x, y)
-    if self.isOutside(x, y) == false then
+    if self:isOutside(x, y) then
         return false, self.defaultValue
     end
 
@@ -46,7 +47,7 @@ function Grid:getValue(x, y)
 end
 
 function Grid:setValue(x, y, value)
-    if self.isOutside(x, y) == false then
+    if self:isOutside(x, y) then
         return false
     end
 
@@ -112,14 +113,16 @@ directionVectors[EDirection.UpperLeft] =    {-1, -1}
 function Grid:getNeighbour(x, y, direction)
     assert(type(direction) == type(EDirection), "direction value is not a EDirection")
 
-    if self:isOutside(x, y) then
+    local result, value = self:getValue(x, y)
+
+    if not result then
         error "Coordinates are outside the grid"
     end
 
     local neighbourX = x + directionVectors[direction][1]
     local neighbourY = y + directionVectors[direction][2]
 
-    local result, value = self:getValue(neighbourX, neighbourY)
+    result, value = self:getValue(neighbourX, neighbourY)
 
     if not result then
         error "Neighbour's coordinates are outside the grid"
@@ -130,13 +133,13 @@ end
 
 function Grid:swap(fromX, fromY, toX, toY)
 
-    local result, swap = self.values[fromX][fromY]
+    local result, swap = self:getValue(fromX, fromY)
 
     if not result then
         error "Coordinates (from) are outside the grid"
     end
 
-    result, self.values[fromX][fromY] = self.values[toX][toY]
+    result, self.values[fromX][fromY] = self:getValue(toX, toY)
 
     if not result then
         self.values[fromX][fromY] = swap
@@ -145,6 +148,49 @@ function Grid:swap(fromX, fromY, toX, toY)
 
     self.values[toX][toY] = swap
 
+end
+
+function Grid:iterate(predicate)
+    assert(type(predicate) == "function", "Predicate must be a function")
+    for y = 1, self.height do
+        for x = 1, self.width do
+            predicate(self.values[x][y])
+        end
+    end
+end
+
+function Grid:iterateRow(y, predicate)
+    assert(type(predicate) == "function", "Predicate must be a function")
+
+    if self:isOutside(1, y) then
+        error "Y coordinate is outside of grid"
+    end
+
+    for x = 1, self.width do
+        predicate(self.values[x][y])
+    end
+end
+
+-- ?????????? I suppose, it's okay
+function Grid:getIterator()
+    local initialState = {x = 0, y = 1}
+
+    local function iterator(state)
+        while true do
+            state.x = state.x + 1
+            if state.x > self.width then
+                state.y = state.y + 1
+                if state.y > self.height then
+                    break
+                end
+                state.x = 1
+            end
+            return {x = state.x, y = state.y, value = self.values[state.x][state.y]}
+        end
+        return nil
+    end
+
+    return iterator, initialState
 end
 
 -- --verticalAndHorizontal, Diagonal, Both

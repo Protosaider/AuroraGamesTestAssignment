@@ -24,21 +24,47 @@ local function createMetatableForEnumValue(enumName, enumType, enumValue, enumVa
             end
         },
         __newindex = function ()
+            print("in enum value, newindex")
             return nil
         end,
         __eq = function (this, other)
             return this.type == other.type and this.value == other.value
         end,
         __tostring = function ()
-            return enumName .. ": (" .. enumValue .. " = " .. enumValueIndex .. ")"
+            -- return enumName .. ": (" .. enumValue .. " = " .. enumValueIndex .. ")"
+            return enumValue
         end,
         __type = enumType,
     }
 end
 
+local function createMetatableForEnumProxy(enumName, enumLength)
+    return {
+        __index = function (t, k)
+            -- local value = t[k]
+            print("in Proxy index, go to rawget")
+            local value = rawget(t, k)
+            if value == nil then
+                error "Invalid key"
+            end
+            return value
+        end,
+        __newindex = function (t, k, v)
+            print("in Proxy newindex")
+            error("Attempt to update a read-only table", 2)
+        end,
+        __tostring = function ()
+            return tostring(enumName)
+        end,
+        __len = function ()
+            return enumLength
+        end
+    }
+end
+
 local function new(name, values)
 
-    -- public readonly table
+    -- public readonly table http://lua-users.org/wiki/ReadOnlyTables
     local proxy = {}
     local enumType = {}
 
@@ -58,7 +84,9 @@ local function new(name, values)
     end
 
     for enumIndex, enumValue in ipairs(values) do
+        -- PROBLEM, THAT CANNOT BE SOLVED: in objects or in debug mode enum's values will be shown as nil
         local o = {}
+
         local mt = createMetatableForEnumValue(name, enumType, enumValue, enumIndex)
         setmetatable(o, mt)
         proxy[enumValue] = o
@@ -72,35 +100,29 @@ local function new(name, values)
         --         return enumType
         --     end
         -- end
+        
+        print("enum index and value " .. enumIndex .. " " .. enumValue)
 
         function o.enumType(o)
             return getmetatable(o).__type
         end
     end
 
-    local proxyMt = {
-        __index = function (t, k)
-            -- local value = t[k]
-            local value = rawget(t, k)
-            -- if value == nil then
-            --     error "Invalid key"
-            -- end
-            return value
-        end,
-        __newindex = function (t, k, v)
-            error("Attempt to update a read-only table", 2)
-        end,
-        __tostring = function ()
-            return tostring(name)
-          end,
-        __len = function ()
-            return #values
-        end
-    }
 
+    local proxyMt = createMetatableForEnumProxy(name, #values)
     setmetatable(proxy, proxyMt)
 
-    return proxy
+    -- http://lua-users.org/wiki/ReadOnlyTables
+    -- return proxy of proxy, so tables, that are associated as enum's value will be readonly
+    return setmetatable({}, {
+        __index = proxy,
+        __newindex = function(table, key, value)
+            print("proxy of proxy newindex")
+            error("Attempt to modify read-only table")
+        end,
+        __metatable = false,
+        __len = getmetatable(proxy).__len,
+      })
 end
 
 

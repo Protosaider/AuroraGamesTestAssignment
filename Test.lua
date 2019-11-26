@@ -23,6 +23,24 @@ end
 print(columnsHeader)
 print(headerSeparator)
 
+local output = io.stdout
+
+function printOut(s)
+    output:write(s .. "\n") --\r because windows
+    output:flush()
+end
+
+output:write("CHECK OUTPUT")
+output:write("cls")
+output:write("cls\n")
+
+printOut("OUt OUT")
+printOut("CHECK OUTPUT2")
+printOut("cls")
+printOut("CHECK OUTPUT3")
+
+
+
 local rowHeaders = {}
 itemSeparator = ' '
 
@@ -34,6 +52,71 @@ for i = 1, M do
     rowHeaders[i] = rowHeaders[i] .. (i - 1) .. itemSeparator .. " " .. "A"
 end
 
+print(rowHeaders[11])
+
+
+
+local Crystal = require("Crystal")
+local ECrystalColor = require("ECrystalColor")
+local ECrystalType = require("ECrystalType")
+
+
+local crys1 = Crystal:new(ECrystalType.Base, ECrystalColor.A)
+print(crys1)
+
+local crys2 = Crystal:new({"tuk"}, {"cook"})
+print(crys2)
+
+local crys = {ECrystalColor.A}
+crys[ECrystalColor.A] = 1
+print(crys[ECrystalColor.A])
+
+print(type(ECrystalColor.A) .. " " .. type(ECrystalType.Base) .. " " .. type(ECrystalColor))
+print(type(ECrystalType) == type(ECrystalColor))
+
+print(tostring(ECrystalColor.A) .. tostring(ECrystalColor.B[1]))
+
+print(tostring(ECrystalColor[1]) .. tostring(ECrystalColor[2]))
+
+ECrystalColor.B[1] = 2
+print(ECrystalColor.B[1])
+
+-- cannot modify
+-- ECrystalColor.B = 2
+-- print(ECrystalColor.B)
+
+print("\n")
+
+print()
+print(ECrystalColor[1][1])
+print(ECrystalColor.A.A)
+ECrystalColor.A[1] = 20
+print(ECrystalColor.A.value)
+print(ECrystalColor.A[1])
+print(ECrystalColor.A.A)
+
+print(ECrystalColor.A.value)
+ECrystalColor.A.value = "kek"
+
+print()
+print(tostring(ECrystalColor.A))
+print(tostring(ECrystalColor[1]))
+-- ECrystalColor.A = 10
+print(tostring(ECrystalColor.A))
+print(tostring(ECrystalColor[1]))
+
+print()
+-- print(ECrystalColor.B.A.A)
+
+local cryst = Crystal:new(ECrystalType.Base, ECrystalColor[math.random(#ECrystalColor)])
+
+print(cryst.color)
+
+
+local gameField = require("GameField")
+local field = gameField:new(N, M, ' ', '|', '-', '\n')
+field:dump()
+
 repeat
     local res = input:read("l")
 
@@ -43,24 +126,10 @@ repeat
 
     local cellX, cellY, moveToDirection = string.match(res, "^%s*[m]%s+(%d+)%s+(%d+)%s+([lrud])%s*$")
 
-    --clear console
-    if not os.execute("clear") then
-        os.execute("cls")
-    end
-
-    --print header
-    print(columnsHeader)
-    print(headerSeparator)
-
     if cellX ~= nil then
         print("duh")
     else
         print("Wrong input")
-    end
-
-    --print row's headers
-    for _, value in ipairs(rowHeaders) do
-        print(value)
     end
 
 until false
@@ -79,10 +148,10 @@ local Cell = {
     nextHorizontal = {}
 }
 
-local function Cell.onCrystalCombined(gameField, crystalType)
-    -- check crystal crystal
+-- local function Cell.onCrystalCombined(gameField, crystalType)
+    -- check crystal type
     -- if crystal type == normal - just delete, otherwise call another method from gameField
-end
+-- end
 
 -- local Crystal = {
 --     color = "A",
