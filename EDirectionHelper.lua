@@ -26,6 +26,21 @@ local function opposite(direction)
     end
 end
 
+local directionVectors = {}
+directionVectors[EDirection.Up] =           {0, -1}
+directionVectors[EDirection.Right]  =       {1, 0}
+directionVectors[EDirection.Down] =         {0, 1}
+directionVectors[EDirection.Left] =         {-1, 0}
+directionVectors[EDirection.UpperRight] =   {1, -1}
+directionVectors[EDirection.LowerRight] =   {1, 1}
+directionVectors[EDirection.LowerLeft] =    {-1, 1}
+directionVectors[EDirection.UpperLeft] =    {-1, -1}
+
+local function offset(direction)
+    return directionVectors[direction]
+end
+
 return {
-    opposite = opposite
+    opposite = opposite,
+    offset = offset,
 }

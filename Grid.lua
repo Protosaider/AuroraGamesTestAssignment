@@ -158,11 +158,17 @@ function Grid:swap(fromX, fromY, toX, toY)
     return true, {from = {x = fromX, y = fromY}, to = {x = toX, y = toY}}
 end
 
+function Grid:swapUnsafe(fromX, fromY, direction)
+    local toX = fromX + directionVectors[direction][1]
+    local toY = fromY + directionVectors[direction][2]
+    return self:swapUnsafe(fromX, fromY, toX, toY)
+end
+
 function Grid:swapUnsafe(fromX, fromY, toX, toY)
     local temp = self.values[fromX][fromY]
     self.values[fromX][fromY] = self.values[toX][toY]
     self.values[toX][toY] = temp
-
+    
     return {from = {x = fromX, y = fromY}, to = {x = toX, y = toY}}
 end
 

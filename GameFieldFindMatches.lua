@@ -1,4 +1,9 @@
 
+local matchTypes = {
+    matchHorizontal = "MatchHorizontal",
+    matchVertical = "MatchVertical",
+}
+
 function checkHorizontal(gameField, width, height, x, y)
     local result = {}
 
@@ -61,15 +66,37 @@ function checkVertical(gameField, width, height, x, y)
     return amount, result
 end
 
-function match3OrGreater(gameField, width, height, x, y)
-    if width <= 2 then
-        return nil
+-- gameField, (matchType, x, y)
+function match3OrGreaterResolvePotentialMatch(gameField, width, height, x, y, matchType)
+
+    local amount = 0
+    local result = {}
+
+    if matchType == matchTypes.matchVertical then
+        amount, result = checkVertical(gameField, width, height, x, y)
+    elseif matchType == matchTypes.matchHorizontal then
+        amount, result = checkHorizontal(gameField, width, height, x, y)
     end
 
-    local value = gameField.grid:getValue(x + 1, y)
+    return amount, result
+end
+
+function findMatch3OrGreaterHorizontal(gameField, width, height, x, y)
+    
+end
+
+function findMatch3OrGreaterVertical(gameField, width, height, x, y)
+    
+end
+
+function findMatch3OrGreater(gameField, width, height)
+
 end
 
 return {
+    matchTypes = matchTypes,
 
+    potentialMatch3OrGreater = match3OrGreaterResolvePotentialMatch,
+    findMatch3OrGreater = findMatch3OrGreater,
 }
 

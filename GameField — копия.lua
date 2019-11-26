@@ -25,6 +25,7 @@ end
 local function addFindMatches(o, key, func)
     GameFieldData[o].findMatch[key] = func
 end
+
 -- @TODO Use only find potential matches and record them (which cell and in which direction must move)
 -- @TODO If it happens -> fire functions etc.
 
@@ -47,8 +48,8 @@ local function removeModify(o, index)
 end
 
 local onModifyFunctions = {
-    Swap = function (x, y, direction)
-        
+    Swap = function (o, from, to)
+        o.grid:swapUnsafe(from.x, from.y, to.x, to.y)
     end
 }
 
@@ -95,37 +96,47 @@ function GameField:init()
 end
 
 -- from {x, y}; to {x, y}
--- from {x, y}; to {direction}
 function GameField:move(from, to)
-    local status, result = self.grid:swap(from.x, from.y, to)
+
+    local status = self.grid:isOutside(from.x, from.y)
 
     if not status then
-        if result == "From" then
-            --write message
-        else
-            print()
-        end
+        --message Can't move crystal: starting coordinates (from.x, from.y) are out of bounds
+        print()
     end
 
-    addModify(self, { x = result.from.x, y = result.from.y, direction = to })
-    addModify(self, { x = result.to.x, y = result.to.y, direction = EDirectionHelper.opposite(to) })
+    status = self.grid:isOutside(to.x, to.y)
+
+    if not status then
+        --message Can't move crystal: ending coordinates (to.x, to.y) are out of bounds
+        print()
+    end
+
+    addModify(self, {data = {from = from, to = to}, func = onModifyFunctions.Swap})
+
+    -- addModify(self, { x = result.from.x, y = result.from.y, direction = to })
+    -- addModify(self, { x = result.to.x, y = result.to.y, direction = EDirectionHelper.opposite(to) })
 
     switchState(self, swapped)
 end
 
-function GameField:tick(status)
+function GameField:tick()
     -- if makingTurn return false and wait for durationSeconds
     if state(self) == still then
         return true
     end
 
     if state(self) == swapped then
-        -- check if coordinates are inside potential Matches)
+
+        local item = removeModify(self, 1)
+        -- check if coordinates are inside potential Matches
         --if hasPotentialMatches then
         --switchState(self, changing)
         --else
         -- switchState(self, undoSwap)
         --end
+
+        item.func(self, item.data.from, item.data.to)
         return false
     end
 

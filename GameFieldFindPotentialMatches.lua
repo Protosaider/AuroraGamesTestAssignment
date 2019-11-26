@@ -1,6 +1,12 @@
 local EDirection = require("EDirection")
 local EDirectionHelper = require("EDirectionHelper")
 
+local potentialMatchTypes = {
+    matchHorizontal = "MatchHorizontal",
+    matchVertical = "MatchVertical",
+}
+
+
 -- * * * *   A * * *
 -- * A A *   * A A *
 -- A * * *   * * * *
@@ -249,11 +255,6 @@ function checkVertical(gameField, width, height, x, y)
     end
     return allStatus, allResults
 end
-
-local potentialMatchTypes = {
-    matchHorizontal = "MatchHorizontal",
-    matchVertical = "MatchVertical",
-}
 
 function findPotentialMatch3(gameField, width, height)
 
