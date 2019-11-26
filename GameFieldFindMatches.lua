@@ -82,14 +82,81 @@ function match3OrGreaterResolvePotentialMatch(gameField, width, height, x, y, ma
 end
 
 function findMatch3OrGreaterHorizontal(gameField, width, height, x, y)
-    
+
+    local allMatches = {}
+
+    local result = {}
+    local currentValue = gameField.grid:getValue(1, y)
+    local currentType = currentValue.type
+    local currentColor = currentValue.color
+    result[#result+1] = {x = 1, y = y}
+
+    for i = 2, width do
+        currentValue = gameField.grid:getValue(i, y)
+        if currentValue.type == currentType and currentValue.color == currentColor then
+            result[#result+1] = {x = i, y = y}
+        else
+            if #result >= 3 then
+                -- for _, value in ipairs(result) do
+                --     allMatches[#allMatches+1] = value
+                -- end
+                allMatches[#allMatches+1] = { data = {type = currentType, color = currentColor}, values = result }
+            end
+            currentType = currentValue.type
+            currentColor = currentValue.color
+        end
+    end
+
+    return allMatches
 end
 
 function findMatch3OrGreaterVertical(gameField, width, height, x, y)
-    
+    local allMatches = {}
+
+    local result = {}
+    local currentValue = gameField.grid:getValue(x, 1)
+    local currentType = currentValue.type
+    local currentColor = currentValue.color
+    result[#result+1] = {x = x, y = 1}
+
+    for i = 2, height do
+        currentValue = gameField.grid:getValue(x, i)
+        if currentValue.type == currentType and currentValue.color == currentColor then
+            result[#result+1] = {x = x, y = i}
+        else
+            if #result >= 3 then
+                allMatches[#allMatches+1] = { data = {type = currentType, color = currentColor}, values = result }
+            end
+            currentType = currentValue.type
+            currentColor = currentValue.color
+        end
+    end
+
+    return allMatches
 end
 
 function findMatch3OrGreater(gameField, width, height)
+    local allMatches = {}
+
+    for y = 1, height do
+        local result = findMatch3OrGreaterHorizontal(gameField, width, height, 1, y)
+        if #result > 0 then
+            for _, value in ipairs(result) do
+                allMatches[#allMatches+1] = { matchTypes.matchHorizontal, value }
+            end
+        end
+    end
+
+    for x = 1, width do
+        local result = findMatch3OrGreaterVertical(gameField, width, height, x, 1)
+        if #result > 0 then
+            for _, value in ipairs(result) do
+                allMatches[#allMatches+1] = { matchTypes.matchVertical, value }
+            end
+        end
+    end
+
+    return allMatches
 
 end
 
