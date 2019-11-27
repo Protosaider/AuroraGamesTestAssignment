@@ -1,6 +1,8 @@
 local N = 10
 local M = 12
 
+math.randomseed(1000)
+
 local indexSpace = ' '
 local separatorItemVertical = '|'
 local separatorItemHorizontal = '-'
@@ -8,10 +10,10 @@ local newline = '\n'
 local nilItem = '*'
 
 --@TODO Put inside the tick() function
-local sleepTime = 0.25
+local sleepTime = 1.25
 
 local function sleep(s)
-    local ntime = os.clock() + s / 10
+    local ntime = os.clock() + s
     repeat until os.clock() > ntime
 end
 
@@ -37,7 +39,7 @@ local function init()
     gameField:init()
 end
 
-local function move(from, to)
+local function move(from, to, command)
     if from == nil then
         visualizer:setMessage("Wrong input")
         return
@@ -59,13 +61,15 @@ local function move(from, to)
     }
 
     local msg = gameField:move(fromData, toData)
-    visualizer:setMessage(msg)
+    visualizer:setMessage(msg or command)
+end
+
+local function dump()
+    visualizer:dump(gameField)
 end
 
 return {
-    dump = function ()
-        visualizer:dump(gameField)
-    end,
+    dump = dump,
     init = init,
     tick = tick,
     move = move,

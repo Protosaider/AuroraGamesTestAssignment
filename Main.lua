@@ -1,7 +1,6 @@
 
 local Game = require("Game")
 local EDirection = require("EDirection")
-local EDirectionHelper = require("EDirectionHelper")
 
 Game.init()
 
@@ -21,9 +20,12 @@ repeat
         end
         
         local fromX, fromY, moveToDirection = string.match(res, "^%s*[m]%s+(%d+)%s+(%d+)%s+([lrud])%s*$")
-
+        
         if fromX ~= nil then
+            local commandMove = "m " .. fromX .. " " .. fromY .. " " .. moveToDirection
             local directionTo
+            fromX = fromX | 0
+            fromY = fromY | 0
 
             if moveToDirection == 'l' then
                 directionTo = EDirection.Left
@@ -35,7 +37,8 @@ repeat
                 directionTo = EDirection.Down
             end
 
-            Game.move({x = fromX, y = fromY}, directionTo)
+            --@TODO Add +1 for each, cause coordinates shown as 0..N-1
+            Game.move({x = fromX , y = fromY }, directionTo, commandMove)
         else
             Game.move(nil, nil)
         end

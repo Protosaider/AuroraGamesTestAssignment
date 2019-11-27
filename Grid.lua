@@ -38,15 +38,25 @@ function Grid:isOutside(x, y)
     return false
 end
 
+--!!!!!!!!!!   !!!!!!!!   !!!!!!!!!!!!!  !!!!!!!!!!  !!!!!!!!!!!!  !!!!!!!!!!  !!!!!!!!!!!!!
 function Grid:getValue(x, y)
+    --return self.values[x][y]  
+    local value = self.values[x][y]
+    return value == NIL and nil or value
+end
+
+function Grid:getValueSafe(x, y)
     if self:isOutside(x, y) then
         return false, self.defaultValue
     end
-
     return true, self.values[x][y]
 end
 
 function Grid:setValue(x, y, value)
+    self.values[x][y] = value and value or self.defaultValue
+end
+
+function Grid:setValueSafe(x, y, value)
     if self:isOutside(x, y) then
         return false
     end
@@ -113,7 +123,7 @@ directionVectors[EDirection.UpperLeft] =    {-1, -1}
 function Grid:getNeighbour(x, y, direction)
     assert(type(direction) == type(EDirection), "direction value is not a EDirection")
 
-    local result, value = self:getValue(x, y)
+    local result, value = self:getValueSafe(x, y)
 
     if not result then
         error "Coordinates are outside the grid"
@@ -122,7 +132,7 @@ function Grid:getNeighbour(x, y, direction)
     local neighbourX = x + directionVectors[direction][1]
     local neighbourY = y + directionVectors[direction][2]
 
-    result, value = self:getValue(neighbourX, neighbourY)
+    result, value = self:getValueSafe(neighbourX, neighbourY)
 
     if not result then
         error "Neighbour's coordinates are outside the grid"
@@ -131,21 +141,21 @@ function Grid:getNeighbour(x, y, direction)
     return value
 end
 
-function Grid:swap(fromX, fromY, direction)
+function Grid:swapSafe(fromX, fromY, direction)
     local toX = fromX + directionVectors[direction][1]
     local toY = fromY + directionVectors[direction][2]
-    return self:swap(fromX, fromY, toX, toY)
+    return self:swapSafe(fromX, fromY, toX, toY)
 end
 
-function Grid:swap(fromX, fromY, toX, toY)
-    local result, temp = self:getValue(fromX, fromY)
+function Grid:swapSafe(fromX, fromY, toX, toY)
+    local result, temp = self:getValueSafe(fromX, fromY)
 
     if not result then
         -- error "Coordinates (from) are outside the grid"
         return false, "From"
     end
 
-    result, self.values[fromX][fromY] = self:getValue(toX, toY)
+    result, self.values[fromX][fromY] = self:getValueSafe(toX, toY)
 
     if not result then
         self.values[fromX][fromY] = temp
@@ -158,17 +168,16 @@ function Grid:swap(fromX, fromY, toX, toY)
     return true, {from = {x = fromX, y = fromY}, to = {x = toX, y = toY}}
 end
 
-function Grid:swapUnsafe(fromX, fromY, direction)
+function Grid:swap(fromX, fromY, direction)
     local toX = fromX + directionVectors[direction][1]
     local toY = fromY + directionVectors[direction][2]
-    return self:swapUnsafe(fromX, fromY, toX, toY)
+    return self:swap(fromX, fromY, toX, toY)
 end
 
-function Grid:swapUnsafe(fromX, fromY, toX, toY)
+function Grid:swap(fromX, fromY, toX, toY)
     local temp = self.values[fromX][fromY]
     self.values[fromX][fromY] = self.values[toX][toY]
     self.values[toX][toY] = temp
-    
     return {from = {x = fromX, y = fromY}, to = {x = toX, y = toY}}
 end
 

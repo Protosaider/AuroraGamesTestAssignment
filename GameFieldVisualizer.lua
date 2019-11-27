@@ -68,7 +68,7 @@ function GameFieldVisualizer:dump(gameField)
 
     for key, value in ipairs(GridDumpSettings[self].rowHeaders) do
         io.stdout:write(value)
-        self.grid:iterateRow(key, function (value)
+        gameField.grid:iterateRow(key, function (value)
                 io.stdout:write(GridDumpSettings[self].indexSpace)
                 io.stdout:write(tostring(value.color or GridDumpSettings[self].nilItem))
             end
@@ -78,8 +78,6 @@ function GameFieldVisualizer:dump(gameField)
     
     print(GridDumpSettings[self].message)
     self:setMessage("")
-    
-    -- print(gameField:getMessage())
 end
 
 function GameFieldVisualizer:setMessage(message)

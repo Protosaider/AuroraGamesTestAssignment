@@ -7,7 +7,8 @@ local Grid = require("Grid")
 
 local GameFieldFindMatches = require("GameFieldFindMatches")
 local GameFieldFindPotentialMatches = require("GameFieldFindPotentialMatches")
-local GameFieldOnCrystalDestroy = require("GameFieldOnCrystalDestroy")
+
+local Set = require("Set")
 
 -- I'll try to use DualRepresentation p. 197 RobertoIerusalimschy-Pro.InLua
 -- Use weak keys?
@@ -20,7 +21,7 @@ local GameField = {}
 local function createRandomCrystal(restrictedCrystals)
     local randomColor
 
-    if #restrictedCrystals > 0 then
+    if #(restrictedCrystals or {}) > 0 then
         while true do
             local out = true
             randomColor = ECrystalColor[math.random(#ECrystalColor)]
@@ -46,8 +47,8 @@ local function switchState(o, state) GameFieldData[o].state = state end
 local function state(o) return GameFieldData[o].state end
 local still = "Still"
 local endMove = "EndMove"
-local tryToSwap = "Swapped"
-local tryToUndoSwap = "UndoSwap"
+local tryToSwap = "TryToSwap"
+local tryToUndoSwap = "TryToUndoSwap"
 local undoSwap = "UndoSwap"
 local changing = "Changing"
 
@@ -66,11 +67,10 @@ function GameField:new(width, height)
         potentialMatch = {},
 
         moveData = {},
-        undoSwap = {},
 
         toCheckMatch = {},
-        toMove = {},
         toModify = {},
+        toMove = {},
     }
 
     return o
@@ -108,7 +108,7 @@ end
 
 local onMoveFunctionsHolder = {
     Swap = function (o, from, to)
-        o.grid:swapUnsafe(from.x, from.y, to.x, to.y)
+        o.grid:swap(from.x, from.y, to.x, to.y)
         -- GameFieldData[gameField].toCheckMatch[#GameFieldData[o].toCheckMatch+1] = from
         -- GameFieldData[gameField].toCheckMatch[#GameFieldData[o].toCheckMatch+1] = to
     end,
@@ -123,7 +123,7 @@ function MakeMove(gameField, moveData)
 end
 
 function FindPotentialMatches(gameField)
-    GameFieldData[gameField].potentialMatch = GameFieldFindPotentialMatches.findPotentialMatch3Swap(gameField)
+    _, GameFieldData[gameField].potentialMatch = GameFieldFindPotentialMatches.findPotentialMatch3Swap(gameField)
 end
 
 function CheckSwapMatches(gameField)
@@ -138,8 +138,8 @@ function CheckSwapMatches(gameField)
     end
 
     for _, value in ipairs(GameFieldData[gameField].potentialMatch[direction]) do
-        if (value.from.x == from.x and value.from.x == from.y and value.to.x == to.x and value.to.y == to.y) or
-        (value.from.x == to.x and value.from.x == to.y and value.to.x == from.x and value.to.y == from.y)
+        if (value.from.x == from.x and value.from.y == from.y and value.to.x == to.x and value.to.y == to.y) or
+        (value.from.x == to.x and value.from.y == to.y and value.to.x == from.x and value.to.y == from.y)
         then
             GameFieldData[gameField].toCheckMatch[#GameFieldData[gameField].toCheckMatch+1] = from
             GameFieldData[gameField].toCheckMatch[#GameFieldData[gameField].toCheckMatch+1] = to
@@ -154,8 +154,10 @@ local onFindMatchesFunctionsHolder = {
     --{ x = x + dX, y = y, value = previous }
     Match = function (o, result)
         if #result > 0 then
-            for _, value in ipairs(result.values) do
-                GameFieldData[o].toModify[#GameFieldData[o].toModify+1] = value
+            for _, match in ipairs(result) do
+                for key, value in ipairs(match.values) do
+                    GameFieldData[o].toModify[#GameFieldData[o].toModify+1] = value
+                end
             end
         end
     end
@@ -204,10 +206,10 @@ function Modify(gameField)
     local x = 0
     for _, value in ipairs(destroyed) do
         if x < value.x then
-            x = value
-            lowest[#lowest+1] = {x = value.x, y = value.y, count = 1}
+            x = value.x
+            lowest[#lowest+1] = {x = value.x, y = value.y, countEmpty = 1}
         else
-            lowest[#lowest].count = lowest[#lowest].count + 1
+            lowest[#lowest].countEmpty = lowest[#lowest].countEmpty + 1
         end
     end
 
@@ -222,21 +224,21 @@ function Scroll(gameField)
     --{x = value.x, y = value.y, count = 1}
     for key, value in ipairs(GameFieldData[gameField].toMove) do
         for y = value.y, 2, -1 do
-            gameField.grid:swapUnsafe(value.x, y, value.x, y - 1)
+            gameField.grid:swap(value.x, y, value.x, y - 1)
         end
 
         gameField.grid:setValue(value.x, 1, createRandomCrystal())
         
         for y = value.y, 1, -1 do
             local temp = gameField.grid:getValue(value.x, y)
-            if temp == nil then
+            if temp == nil then --will fail, cause return "nil"
                 GameFieldData[gameField].toMove[key].y = y
                 break
             end
             GameFieldData[gameField].toCheckMatch[#GameFieldData[gameField].toCheckMatch+1] = {x = value.x, y = y, value = temp}
         end
 
-        GameFieldData[gameField].toMove[key].count = value.count - 1
+        GameFieldData[gameField].toMove[key].countEmpty = value.countEmpty - 1
 
         -- if GameFieldData[gameField].toMove[key].count == 0 then delete end
 
@@ -251,13 +253,13 @@ function GameField:move(from, to)
 
     local status = self.grid:isOutside(from.x, from.y)
 
-    if not status then
+    if status then
         return "Can't move crystal: starting coordinates (" .. from.x .. ", " .. from.y .. ") are out of bounds"
     end
 
     status = self.grid:isOutside(to.x, to.y)
 
-    if not status then
+    if status then
         return "Can't move crystal: ending coordinates (" .. to.x .. ", " .. to.y .. ") are out of bounds"
     end
 
@@ -306,7 +308,7 @@ function GameField:tick()
 
         --check matches for all
         FindMatches(self)
-        
+
         --they go to toModify
         --modification
         Modify(self)

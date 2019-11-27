@@ -8,7 +8,7 @@ function checkHorizontal(gameField, width, height, x, y)
     local result = {}
 
     local value = gameField.grid:getValue(x, y)
-    result[#result+1] = value
+    result[#result+1] = { x = x, y = y, value = value }
 
     local amount = 1
 
@@ -41,7 +41,7 @@ function checkVertical(gameField, width, height, x, y)
     local result = {}
 
     local value = gameField.grid:getValue(x, y)
-    result[#result+1] = value
+    result[#result+1] = { x = x, y = y, value = value }
 
     local amount = 1
 

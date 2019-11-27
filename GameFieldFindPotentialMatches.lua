@@ -296,7 +296,7 @@ end
 
 
 
-function checkSwapHorizontal(gameField, width, height, x, y)
+function checkVerticalSwap(gameField, width, height, x, y)
     local allResults = {}
     local allStatus = false
 
@@ -324,7 +324,7 @@ function checkSwapHorizontal(gameField, width, height, x, y)
     return allStatus, allResults
 end
 
-function checkSwapVertical(gameField, width, height, x, y)
+function checkHorizontalSwap(gameField, width, height, x, y)
     local allResults = {}
     local allStatus = false
 
@@ -362,32 +362,26 @@ function findPotentialMatch3Swap(gameField)
 
     for y = 1, gameField.height do
         for x = 1, gameField.width do
-            local status, result = checkSwapHorizontal(gameField, gameField.width, gameField.height, x, y)
-            if status then
-                allStatus = true
-                for _, value in ipairs(result) do
-                    allHorizontal[#allHorizontal+1] = value
-                end
-            end
-            status, result = checkSwapVertical(gameField, gameField.width, gameField.height, x, y)
+            local status, result = checkVerticalSwap(gameField, gameField.width, gameField.height, x, y)
             if status then
                 allStatus = true
                 for _, value in ipairs(result) do
                     allVertical[#allVertical+1] = value
                 end
             end
+            status, result = checkHorizontalSwap(gameField, gameField.width, gameField.height, x, y)
+            if status then
+                allStatus = true
+                for _, value in ipairs(result) do
+                    allHorizontal[#allHorizontal+1] = value
+                end
+            end
         end
     end
 
-    -- for _, value in ipairs(allHorizontal) do
-    --     allPotentialMatches[#allPotentialMatches+1] = {potentialMatchTypes.swapHorizontal, value}
-    -- end
-    -- for _, value in ipairs(allVertical) do
-    --     allPotentialMatches[#allPotentialMatches+1] = {potentialMatchTypes.swapVertical, value}
-    -- end
 
-    allPotentialMatches[potentialMatchTypes.swapHorizontal] = allHorizontal
     allPotentialMatches[potentialMatchTypes.swapVertical] = allVertical
+    allPotentialMatches[potentialMatchTypes.swapHorizontal] = allHorizontal
 
     return allStatus, allPotentialMatches
 end
