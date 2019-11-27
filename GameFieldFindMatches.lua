@@ -188,8 +188,8 @@ function match3OrGreater(gameField, data)
         allMatches[#allMatches+1] = { count = count, values = result }
     end
     
-    allMatches = table.sort(allMatches, function (a, b)
-        return a.count >= b.count
+    table.sort(allMatches, function (a, b)
+        return a.count > b.count --from biggest to lowest
     end)
 
     return "Match", allMatches

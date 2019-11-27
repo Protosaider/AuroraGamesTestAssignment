@@ -71,7 +71,6 @@ function GameField:new(width, height)
         toCheckMatch = {},
         toMove = {},
         toModify = {},
-        toSpawn = {}
     }
 
     return o
@@ -176,28 +175,76 @@ end
 
 local onModifyFunctionsHolder = {
     --{ x = x + dX, y = y, value = previous }
-    Destroy = function (o, value)
+    DestroyBase = function (o, value)
         o.grid:setValue(value.x, value.y, nil)
-        
+        return {x = value.x, y = value.y}
     end,
 }
 function Modify(gameField)
+    local destroyed = {}
     for _, value in ipairs(GameFieldData[gameField].toModify) do
 
         -- add here functions from additional module or smth like this
         if value.value.type == ECrystalType.Base
         then
-            return onModifyFunctionsHolder["Destroy"](gameField, value)
+            local result = onModifyFunctionsHolder["DestroyBase"](gameField, value)
+            destroyed[#destroyed+1] = result
         end
+    end
+
+    --handle destroyed objects
+    table.sort(destroyed, function (a, b)
+        if a.x ~= b.x then
+            return a.x < b.x
+        end
+        return a.y > b.y
+    end)
+
+    local lowest = {}
+    local x = 0
+    for _, value in ipairs(destroyed) do
+        if x < value.x then
+            x = value
+            lowest[#lowest+1] = {x = value.x, y = value.y, count = 1}
+        else
+            lowest[#lowest].count = lowest[#lowest].count + 1
+        end
+    end
+
+    for _, value in ipairs(lowest) do
+        GameFieldData[gameField].toMove[#GameFieldData[gameField].toMove+1] = value
+    end
+
+end
+
+
+function Scroll(gameField)
+    --{x = value.x, y = value.y, count = 1}
+    for key, value in ipairs(GameFieldData[gameField].toMove) do
+        for y = value.y, 2, -1 do
+            gameField.grid:swapUnsafe(value.x, y, value.x, y - 1)
+        end
+
+        gameField.grid:setValue(value.x, 1, createRandomCrystal())
+        
+        for y = value.y, 1, -1 do
+            local temp = gameField.grid:getValue(value.x, y)
+            if temp == nil then
+                GameFieldData[gameField].toMove[key].y = y
+                break
+            end
+            GameFieldData[gameField].toCheckMatch[#GameFieldData[gameField].toCheckMatch+1] = {x = value.x, y = y, value = temp}
+        end
+
+        GameFieldData[gameField].toMove[key].count = value.count - 1
+
+        -- if GameFieldData[gameField].toMove[key].count == 0 then delete end
+        
     end
 end
 
 
 local onEndMoveFunctions = FindPotentialMatches
-
-
-
-
 
 
 function GameField:move(from, to)
@@ -265,8 +312,8 @@ function GameField:tick()
         --modification
         Modify(self)
 
-        --move
-        Move(self)
+        --move crystals
+        Scroll(self)
 
         return false
     end
