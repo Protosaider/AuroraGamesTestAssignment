@@ -1,35 +1,72 @@
+local N = 10
+local M = 12
 
---initialization
+local indexSpace = ' '
+local separatorItemVertical = '|'
+local separatorItemHorizontal = '-'
+local newline = '\n'
+local nilItem = '*'
 
---first dump
+--@TODO Put inside the tick() function
+local sleepTime = 0.25
+
+local function sleep(s)
+    local ntime = os.clock() + s / 10
+    repeat until os.clock() > ntime
+end
 
 
--- --@TODO Put inside the tick() function
--- local sleepTime = 0.3
+local GameField = require("GameField")
+local GameFieldVisualizer = require("GameFieldVisualizer")
 
--- local function sleep(s)
---     local ntime = os.clock() + s/10
---     repeat until os.clock() > ntime
--- end
+local EDirection = require("EDirection")
+local EDirectionHelper = require("EDirectionHelper")
 
-repeat
-    --if gameState == still then
-    local res = io.stdin:read("l")
-    local commandQuit = string.match(res, "^(%s*[q]%s*)$")
-    if commandQuit then
-        break
+local gameField = GameField:new(N, M)
+local visualizer = GameFieldVisualizer:new(N, M, indexSpace, separatorItemVertical, separatorItemHorizontal, newline, nilItem)
+
+local function tick()
+    local isWaitingForInput = gameField:tick()
+    if not isWaitingForInput then
+        sleep(sleepTime)
+    end
+    return isWaitingForInput
+end
+
+local function init()
+    gameField:init()
+end
+
+local function move(from, to)
+    if from == nil then
+        visualizer:setMessage("Wrong input")
+        return
     end
 
-    local cellX, cellY, moveToDirection = string.match(res, "^%s*[m]%s+(%d+)%s+(%d+)%s+([lrud])%s*$")
-    --local result = move(cellX, cellY, moveToDirection)
-    --gameState = tick()
-    --dump()
+    local oppositeDirection = EDirectionHelper.opposite(to)
+    local toOffset = EDirectionHelper.offset(to)
 
-    if cellX ~= nil then
-        print("duh")
-    else
-        print("Wrong input")
-    end
+    local fromData = {
+        x = from.x,
+        y = from.y,
+        direction = to
+    }
 
-until false
+    local toData = {
+        x = from.x + toOffset[1],
+        y = from.y + toOffset[2],
+        direction = oppositeDirection
+    }
 
+    local msg = gameField:move(fromData, toData)
+    visualizer:setMessage(msg)
+end
+
+return {
+    dump = function ()
+        visualizer:dump(gameField)
+    end,
+    init = init,
+    tick = tick,
+    move = move,
+}

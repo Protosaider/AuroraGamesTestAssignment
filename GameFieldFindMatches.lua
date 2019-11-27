@@ -15,7 +15,8 @@ function checkHorizontal(gameField, width, height, x, y)
     for dX = 1, width - x do
         local next = gameField.grid:getValue(x + dX, y)
         if next.type == value.type and next.color == value.color then
-            result[#result+1] = next
+            -- result[#result+1] = next
+            result[#result+1] = { x = x + dX, y = y, value = next }
             amount = amount + 1
         else
             break
@@ -25,7 +26,8 @@ function checkHorizontal(gameField, width, height, x, y)
     for dX = -1, 1 - x, -1 do
         local previous = gameField.grid:getValue(x + dX, y)
         if previous.type == value.type and previous.color == value.color then
-            result[#result+1] = previous
+            -- result[#result+1] = previous
+            result[#result+1] = { x = x + dX, y = y, value = previous }
             amount = amount + 1
         else
             break
@@ -46,7 +48,8 @@ function checkVertical(gameField, width, height, x, y)
     for dY = 1, height - y do
         local next = gameField.grid:getValue(x, y + dY)
         if next.type == value.type and next.color == value.color then
-            result[#result+1] = next
+            -- result[#result+1] = next
+            result[#result+1] = { x = x, y = y + dY, value = next }
             amount = amount + 1
         else
             break
@@ -56,7 +59,8 @@ function checkVertical(gameField, width, height, x, y)
     for dY = -1, 1 - y, -1 do
         local previous = gameField.grid:getValue(x, y + dY)
         if previous.type == value.type and previous.color == value.color then
-            result[#result+1] = previous
+            -- result[#result+1] = previous
+            result[#result+1] = { x = x, y = y + dY, value = previous }
             amount = amount + 1
         else
             break
@@ -65,6 +69,7 @@ function checkVertical(gameField, width, height, x, y)
 
     return amount, result
 end
+
 
 -- gameField, (matchType, x, y)
 function match3OrGreaterResolvePotentialMatch(gameField, width, height, x, y, matchType)
@@ -80,6 +85,10 @@ function match3OrGreaterResolvePotentialMatch(gameField, width, height, x, y, ma
 
     return amount, result
 end
+
+
+
+
 
 function findMatch3OrGreaterHorizontal(gameField, width, height, x, y)
 
@@ -104,6 +113,7 @@ function findMatch3OrGreaterHorizontal(gameField, width, height, x, y)
             end
             currentType = currentValue.type
             currentColor = currentValue.color
+            result = {x = i, y = y}
         end
     end
 
@@ -129,13 +139,14 @@ function findMatch3OrGreaterVertical(gameField, width, height, x, y)
             end
             currentType = currentValue.type
             currentColor = currentValue.color
+            result = {x = i, y = y}
         end
     end
 
     return allMatches
 end
 
-function findMatch3OrGreater(gameField, width, height)
+function findAllMatches3OrGreater(gameField, width, height)
     local allMatches = {}
 
     for y = 1, height do
@@ -160,10 +171,36 @@ function findMatch3OrGreater(gameField, width, height)
 
 end
 
+
+function match3OrGreater(gameField, data)
+
+    local allMatches = {}
+    local count = 0
+    local result = {}
+
+    count, result = checkVertical(gameField, gameField.width, gameField.height, data.x, data.y)
+    if count >= 3 then
+        allMatches[#allMatches+1] = { count = count, values = result }
+    end
+
+    count, result = checkHorizontal(gameField, gameField.width, gameField.height, data.x, data.y)
+    if count >= 3 then
+        allMatches[#allMatches+1] = { count = count, values = result }
+    end
+    
+    allMatches = table.sort(allMatches, function (a, b)
+        return a.count >= b.count
+    end)
+
+    return "Match", allMatches
+end
+
+
 return {
     matchTypes = matchTypes,
 
     potentialMatch3OrGreater = match3OrGreaterResolvePotentialMatch,
-    findMatch3OrGreater = findMatch3OrGreater,
+    findAllMatches3OrGreater = findAllMatches3OrGreater,
+    match3OrGreater = match3OrGreater,
 }
 

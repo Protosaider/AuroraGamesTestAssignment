@@ -4,6 +4,8 @@ local EDirectionHelper = require("EDirectionHelper")
 local potentialMatchTypes = {
     matchHorizontal = "MatchHorizontal",
     matchVertical = "MatchVertical",
+    swapVertical = "SwapVertical",
+    swapHorizontal = "SwapHorizontal"
 }
 
 
@@ -200,7 +202,7 @@ function checkVerticalCenter(gameField, width, height, x, y)
     return status, result
 end
 
-function checkHorizontal(gameField, width, height, x, y)
+function checkAllHorizontal(gameField, width, height, x, y)
     local allResults = {}
     local allStatus = false
 
@@ -228,7 +230,7 @@ function checkHorizontal(gameField, width, height, x, y)
     return allStatus, allResults
 end
 
-function checkVertical(gameField, width, height, x, y)
+function checkAllVertical(gameField, width, height, x, y)
     local allResults = {}
     local allStatus = false
 
@@ -259,36 +261,143 @@ end
 function findPotentialMatch3(gameField, width, height)
 
     local allPotentialMatches = {}
+    local allHorizontal = {}
+    local allVertical = {}
     local allStatus = false
 
     for y = 1, height do
         for x = 1, width do
-            local status, result = checkHorizontal(gameField, width, height, x, y)
+            local status, result = checkAllHorizontal(gameField, width, height, x, y)
             if status then
                 allStatus = true
                 for _, value in ipairs(result) do
-                    allPotentialMatches[#allPotentialMatches+1] = {potentialMatchTypes.matchHorizontal, value}
+                    allHorizontal[#allHorizontal+1] = value
                 end
-                status = false
             end
-            status, result = checkVertical(gameField, width, height, x, y)
+            status, result = checkAllVertical(gameField, width, height, x, y)
             if status then
                 allStatus = true
                 for _, value in ipairs(result) do
-                    allPotentialMatches[#allPotentialMatches+1] = {potentialMatchTypes.matchVertical, value}
+                    allVertical[#allVertical+1] = value
                 end
-                status = false
             end
         end
+    end
+
+    for _, value in ipairs(allHorizontal) do
+        allPotentialMatches[#allPotentialMatches+1] = {potentialMatchTypes.matchHorizontal, value}
+    end
+    for _, value in ipairs(allVertical) do
+        allPotentialMatches[#allPotentialMatches+1] = {potentialMatchTypes.matchVertical, value}
     end
 
     return allStatus, allPotentialMatches
 end
 
 
+
+function checkSwapHorizontal(gameField, width, height, x, y)
+    local allResults = {}
+    local allStatus = false
+
+    local status, result = checkHorizontalLeft(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
+    status, result = checkHorizontalRight(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
+    status, result = checkVerticalCenter(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
+    return allStatus, allResults
+end
+
+function checkSwapVertical(gameField, width, height, x, y)
+    local allResults = {}
+    local allStatus = false
+
+    local status, result = checkVerticalUp(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
+    status, result = checkVerticalDown(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
+    status, result = checkHorizontalCenter(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
+
+    return allStatus, allResults
+end
+
+function findPotentialMatch3Swap(gameField)
+
+    local allPotentialMatches = {}
+    local allHorizontal = {}
+    local allVertical = {}
+    local allStatus = false
+
+    for y = 1, gameField.height do
+        for x = 1, gameField.width do
+            local status, result = checkSwapHorizontal(gameField, gameField.width, gameField.height, x, y)
+            if status then
+                allStatus = true
+                for _, value in ipairs(result) do
+                    allHorizontal[#allHorizontal+1] = value
+                end
+            end
+            status, result = checkSwapVertical(gameField, gameField.width, gameField.height, x, y)
+            if status then
+                allStatus = true
+                for _, value in ipairs(result) do
+                    allVertical[#allVertical+1] = value
+                end
+            end
+        end
+    end
+
+    -- for _, value in ipairs(allHorizontal) do
+    --     allPotentialMatches[#allPotentialMatches+1] = {potentialMatchTypes.swapHorizontal, value}
+    -- end
+    -- for _, value in ipairs(allVertical) do
+    --     allPotentialMatches[#allPotentialMatches+1] = {potentialMatchTypes.swapVertical, value}
+    -- end
+
+    allPotentialMatches[potentialMatchTypes.swapHorizontal] = allHorizontal
+    allPotentialMatches[potentialMatchTypes.swapVertical] = allVertical
+
+    return allStatus, allPotentialMatches
+end
+
+
+
 return {
     potentialMatchTypes = potentialMatchTypes,
 
     findPotentialMatch3 = findPotentialMatch3,
+    findPotentialMatch3Swap = findPotentialMatch3Swap,
 }
 

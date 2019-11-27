@@ -3,9 +3,7 @@
 local GridDumpSettings = {}
 setmetatable(GridDumpSettings, {__mode = "k"})
 
-local GridVizualizer = {
-
-}
+local GameFieldVisualizer = {}
 
 local function createDataForDump(gridWidth, gridHeight, indexSpace, separatorItemVertical, separatorItemHorizontal, newline, nilItem)
     local columnsHeader = string.rep(indexSpace, 3)
@@ -40,6 +38,8 @@ local function createDataForDump(gridWidth, gridHeight, indexSpace, separatorIte
         rowHeaders = rowHeaders,
         indexSpace = indexSpace,
         nilItem = nilItem,
+
+        message = "",
     }
 end
 
@@ -49,21 +49,19 @@ local function clearConsole()
     end
 end
 
-function GridVizualizer:new(width, height, indexSpace, separatorItemVertical, separatorItemHorizontal, newline, nilItem)
--- function GridVizualizer:new(grid, indexSpace, separatorItemVertical, separatorItemHorizontal, newline)
+function GameFieldVisualizer:new(width, height, indexSpace, separatorItemVertical, separatorItemHorizontal, newline, nilItem)
     local o = {}
 
     self.__index = self
     setmetatable(o, self)
 
     GridDumpSettings[o] = createDataForDump(width, height, indexSpace, separatorItemVertical, separatorItemHorizontal, newline, nilItem)
-    -- GridDumpSettings[grid] = createDataForDump(grid.width, grid.height, indexSpace, separatorItemVertical, separatorItemHorizontal, newline)
 
     return o
 end
 
 -- @TODO Create iterator in gameField, instead of using gameField itself
-function GridVizualizer:dump(grid)
+function GameFieldVisualizer:dump(gameField)
     clearConsole()
 
     print(GridDumpSettings[self].columnsHeader)
@@ -77,8 +75,15 @@ function GridVizualizer:dump(grid)
         )
         print()
     end
-
-    -- @TODO print(gameField:message)
+    
+    print(GridDumpSettings[self].message)
+    self:setMessage("")
+    
+    -- print(gameField:getMessage())
 end
 
-return GridVizualizer
+function GameFieldVisualizer:setMessage(message)
+    GridDumpSettings[self].message = message
+end
+
+return GameFieldVisualizer

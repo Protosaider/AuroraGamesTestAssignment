@@ -1,4 +1,3 @@
-
 local Crystal = require("Crystal")
 local ECrystalType = require("ECrystalType")
 local ECrystalColor = require("ECrystalColor")
@@ -6,84 +5,73 @@ local EDirection = require("EDirection")
 local EDirectionHelper = require("EDirectionHelper")
 local Grid = require("Grid")
 
--- try to use DualRepresentation p. 197 RobertoIerusalimschy-Pro.InLua
--- Use weak keys
+local GameFieldFindMatches = require("GameFieldFindMatches")
+local GameFieldFindPotentialMatches = require("GameFieldFindPotentialMatches")
+local GameFieldOnCrystalDestroy = require("GameFieldOnCrystalDestroy")
 
+-- I'll try to use DualRepresentation p. 197 RobertoIerusalimschy-Pro.InLua
+-- Use weak keys?
 local GameFieldData = {}
 setmetatable(GameFieldData, {__mode = "k"})
 
 local GameField = {}
 
 -- Should be private - can call only inside module. Must be declared before usage
-local function createRandomCrystal()
-    local randomColor = ECrystalColor[math.random(#ECrystalColor)]
+local function createRandomCrystal(restrictedCrystals)
+    local randomColor
+
+    if #restrictedCrystals > 0 then
+        while true do
+            local out = true
+            randomColor = ECrystalColor[math.random(#ECrystalColor)]
+            for _, value in ipairs(restrictedCrystals) do
+                if value.color == randomColor then
+                    out = false
+                end
+            end
+            if out then
+                break
+            end
+        end
+    else
+        randomColor = ECrystalColor[math.random(#ECrystalColor)]
+    end
+
     local crystal = Crystal:new(ECrystalType.Base, randomColor)
     return crystal
 end
 
---@TODO Use only for checks after mix and init functions
-local function addFindMatches(o, key, func)
-    GameFieldData[o].findMatch[key] = func
-end
 
--- @TODO Use only find potential matches and record them (which cell and in which direction must move)
--- @TODO If it happens -> fire functions etc.
-
-local function addFindPotentialMatches(o, key, func)
-    GameFieldData[o].findPotentialMatches[key] = func
-end
-
-local function addOnCrystalDestroy(o, key, func)
-    GameFieldData[o].onCrystalDestroy[key] = func
-end
-
-local function addModify(o, item)
-    GameFieldData[o].modify[#GameFieldData[o].modify + 1] = item
-end
-
-local function removeModify(o, index)
-    local item = GameFieldData[o].modify[index]
-    GameFieldData[o].modify[index] = nil
-    return item
-end
-
-local onModifyFunctions = {
-    Swap = function (o, from, to)
-        o.grid:swapUnsafe(from.x, from.y, to.x, to.y)
-    end
-}
-
-local function switchState(o, state)
-    GameFieldData[o].state = state
-end
-
-local function state(o)
-    return GameFieldData[o].state
-end
-
-local swapped = "Swapped"
-local undoSwap = "UndoSwap"
+local function switchState(o, state) GameFieldData[o].state = state end
+local function state(o) return GameFieldData[o].state end
 local still = "Still"
+local endMove = "EndMove"
+local tryToSwap = "Swapped"
+local tryToUndoSwap = "UndoSwap"
+local undoSwap = "UndoSwap"
 local changing = "Changing"
 
 function GameField:new(width, height)
     local o = {}
     o.grid = Grid:new({}, width, height, nil)
+    o.width = o.grid.width
+    o.height = o.grid.height
 
     self.__index = self
     setmetatable(o, self)
 
-    o:init()
-
     GameFieldData[o] = {
         state = still,
 
-        findMatch = {},
-        findPotentialMatches = {},
-        onCrystalDestroy = {},
+        potentialMatch = {},
 
-        modify = {},
-        destroy = {},
+        moveData = {},
+        undoSwap = {},
+
+        toCheckMatch = {},
+        toMove = {},
+        toModify = {},
+        toSpawn = {}
     }
 
     return o
@@ -91,89 +79,212 @@ end
 
 function GameField:init()
     for value in self.grid:getIterator() do
-        self.grid:setValue(value.x, value.y, createRandomCrystal())
+        local restrictedCrystals = {}
+
+        if value.x > 2 then
+            local prePrevious = self.grid:getValue(value.x - 2, value.y)
+            local previous = self.grid:getValue(value.x - 1, value.y)
+    
+            if (prePrevious.type == previous.type and prePrevious.color == previous.color) then
+                restrictedCrystals[#restrictedCrystals+1] = {type = previous.type, color = previous.color}
+            end
+        end
+    
+        if value.y > 2 then
+            local prePrevious = self.grid:getValue(value.x, value.y - 2)
+            local previous = self.grid:getValue(value.x, value.y - 1)
+    
+            if (prePrevious.type == previous.type and prePrevious.color == previous.color) then
+                restrictedCrystals[#restrictedCrystals+1] = {type = previous.type, color = previous.color}
+            end
+        end
+        
+        self.grid:setValue(value.x, value.y, createRandomCrystal(restrictedCrystals))
+    end
+
+    FindPotentialMatches(self)
+end
+
+
+
+local onMoveFunctionsHolder = {
+    Swap = function (o, from, to)
+        o.grid:swapUnsafe(from.x, from.y, to.x, to.y)
+        -- GameFieldData[gameField].toCheckMatch[#GameFieldData[o].toCheckMatch+1] = from
+        -- GameFieldData[gameField].toCheckMatch[#GameFieldData[o].toCheckMatch+1] = to
+    end,
+}
+function MakeMove(gameField, moveData)
+    -- add here functions from additional module or smth like this
+    if moveData.from.value.type == ECrystalType.Base and
+        moveData.to.value.type == ECrystalType.Base
+     then
+        return onMoveFunctionsHolder["Swap"](gameField, moveData.from, moveData.to)
     end
 end
 
--- from {x, y}; to {x, y}
+function FindPotentialMatches(gameField)
+    GameFieldData[gameField].potentialMatch = GameFieldFindPotentialMatches.findPotentialMatch3Swap(gameField)
+end
+
+function CheckSwapMatches(gameField)
+    local from = GameFieldData[gameField].moveData.from
+    local to = GameFieldData[gameField].moveData.to
+    local direction = GameFieldData[gameField].moveData.from.direction
+
+    if direction == EDirection.Up or direction == EDirection.Down then
+        direction = "SwapVertical"
+    else
+        direction = "SwapHorizontal"
+    end
+
+    for _, value in ipairs(GameFieldData[gameField].potentialMatch[direction]) do
+        if (value.from.x == from.x and value.from.x == from.y and value.to.x == to.x and value.to.y == to.y) or
+        (value.from.x == to.x and value.from.x == to.y and value.to.x == from.x and value.to.y == from.y)
+        then
+            GameFieldData[gameField].toCheckMatch[#GameFieldData[gameField].toCheckMatch+1] = from
+            GameFieldData[gameField].toCheckMatch[#GameFieldData[gameField].toCheckMatch+1] = to
+            return true
+        end
+    end
+    return false
+end
+
+
+local onFindMatchesFunctionsHolder = {
+    --{ x = x + dX, y = y, value = previous }
+    Match = function (o, result)
+        if #result > 0 then
+            for _, value in ipairs(result.values) do
+                GameFieldData[o].toModify[#GameFieldData[o].toModify+1] = value
+            end
+        end
+    end
+}
+function FindMatches(gameField)
+    -- add here functions from additional module or smth like this
+    for _, value in ipairs(GameFieldData[gameField].toCheckMatch) do
+        local matchType, result = GameFieldFindMatches.match3OrGreater(gameField, value)
+        -- then next function, than deside, which function should be used (or reorder findMatches function in such way)
+
+        onFindMatchesFunctionsHolder[matchType](gameField, result)
+    end
+end
+
+
+
+
+local onModifyFunctionsHolder = {
+    --{ x = x + dX, y = y, value = previous }
+    Destroy = function (o, value)
+        o.grid:setValue(value.x, value.y, nil)
+        
+    end,
+}
+function Modify(gameField)
+    for _, value in ipairs(GameFieldData[gameField].toModify) do
+
+        -- add here functions from additional module or smth like this
+        if value.value.type == ECrystalType.Base
+        then
+            return onModifyFunctionsHolder["Destroy"](gameField, value)
+        end
+    end
+end
+
+
+local onEndMoveFunctions = FindPotentialMatches
+
+
+
+
+
+
 function GameField:move(from, to)
 
     local status = self.grid:isOutside(from.x, from.y)
 
     if not status then
-        --message Can't move crystal: starting coordinates (from.x, from.y) are out of bounds
-        print()
+        return "Can't move crystal: starting coordinates (" .. from.x .. ", " .. from.y .. ") are out of bounds"
     end
 
     status = self.grid:isOutside(to.x, to.y)
 
     if not status then
-        --message Can't move crystal: ending coordinates (to.x, to.y) are out of bounds
-        print()
+        return "Can't move crystal: ending coordinates (" .. to.x .. ", " .. to.y .. ") are out of bounds"
     end
 
-    addModify(self, {data = {from = from, to = to}, func = onModifyFunctions.Swap})
+    local fromValue = self.grid:getValue(from.x, from.y)
+    local toValue = self.grid:getValue(to.x, to.y)
 
-    -- addModify(self, { x = result.from.x, y = result.from.y, direction = to })
-    -- addModify(self, { x = result.to.x, y = result.to.y, direction = EDirectionHelper.opposite(to) })
+    local data = {
+        from = { x = from.x, y = from.y, direction = from.direction, value = fromValue },
+        to = { x = to.x, y = to.y, direction = to.direction, value = toValue },
+    }
 
-    switchState(self, swapped)
+    GameFieldData[self].moveData = data
+
+    switchState(self, tryToSwap)
+
 end
 
 function GameField:tick()
-    -- if makingTurn return false and wait for durationSeconds
+
     if state(self) == still then
         return true
     end
 
-    if state(self) == swapped then
-
-        local item = removeModify(self, 1)
-        -- check if coordinates are inside potential Matches
-        --if hasPotentialMatches then
-        --switchState(self, changing)
-        --else
-        -- switchState(self, undoSwap)
-        --end
-
-        item.func(self, item.data.from, item.data.to)
+    if state(self) == tryToSwap then
+        MakeMove(self, GameFieldData[self].moveData)
+        switchState(self, tryToUndoSwap)
         return false
     end
 
+    if state(self) == tryToUndoSwap then
+        local swap = CheckSwapMatches(self)
+        if not swap then
+            switchState(self, undoSwap)
+        else
+            switchState(self, changing)
+        end
+    end
+
     if state(self) == undoSwap then
-        --swap items
-        local from = removeModify(self, 1)
-        local to = removeModify(self, 2)
-        addModify(self, { x = from.x, y = from.y, direction = to.direction })
-        addModify(self, { x = to.x, y = to.y, direction = from.direction })
+        MakeMove(self, GameFieldData[self].moveData)
+        switchState(self, still)
+        return false
+    end
+
+    if state(self) == changing then
+
+        --check matches for all
+        FindMatches(self)
+        
+        --they go to toModify
+        
+        --modification
+        Modify(self)
+
+        --move
+        Move(self)
+
+        return false
+    end
+
+    if state(self) == endMove then
+        onEndMoveFunctions(self)
         switchState(self, still)
         return false
     end
 
 end
 
--- 0) swap
--- 1) check matches/combos
--- 2) decide which match/combo function to call (MAYBE IT HAS PRIORITY because different match function may have different priority)
--- 3) call function --> do smth with field (modify, delete) --> write down cells coordinates and function to execute
--- 4) traverse all cells that needs to be modified --> modify them
--- 5) traverse all cells that needs to be destroyed --> destroy items AND execute function onCrystDestrFunc
--- 6) return to 1
-
-function GameField:checkMatch(x, y, swapDirection)
-    -- iterate all functions to match / combos
-    -- collect table of results
-    -- sort in order of execution or choose most valuable match / combo
-    -- do actions
-end
-
-
-
 
 function GameField:mix()
-    
+-- for each cell, we get a random tile type that we compare with the previous 2 cells left [row][col-1] & [row][col-2] 
+-- as well as with the 2 cells down [row-1][col] & [row-2][col];
+-- if the random tile type is the same as for any of these other cells, we loop until there is no matching.
 end
-
 
 
 return GameField
