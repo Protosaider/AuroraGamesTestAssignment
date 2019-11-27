@@ -239,7 +239,7 @@ function Scroll(gameField)
         GameFieldData[gameField].toMove[key].count = value.count - 1
 
         -- if GameFieldData[gameField].toMove[key].count == 0 then delete end
-        
+
     end
 end
 
@@ -308,18 +308,21 @@ function GameField:tick()
         FindMatches(self)
         
         --they go to toModify
-        
         --modification
         Modify(self)
 
         --move crystals
         Scroll(self)
 
+        --if all tables empty => switch to endMove
+
         return false
     end
 
     if state(self) == endMove then
         onEndMoveFunctions(self)
+        --check if has moves
+        --if not => call mix
         switchState(self, still)
         return false
     end
