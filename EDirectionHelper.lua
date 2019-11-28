@@ -2,7 +2,6 @@ local EDirection = require("EDirection")
 
 local function opposite(direction)
     -- check type
-    -- return opposite
     if direction == EDirection.Up then
         return EDirection.Down
     elseif direction == EDirection.Down then

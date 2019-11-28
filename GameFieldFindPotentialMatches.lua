@@ -1,13 +1,9 @@
-local EDirection = require("EDirection")
-local EDirectionHelper = require("EDirectionHelper")
-
 local potentialMatchTypes = {
-    matchHorizontal = "MatchHorizontal",
-    matchVertical = "MatchVertical",
+    -- matchHorizontal = "MatchHorizontal",
+    -- matchVertical = "MatchVertical",
     swapVertical = "SwapVertical",
     swapHorizontal = "SwapHorizontal"
 }
-
 
 -- * * * *   A * * *
 -- * A A *   * A A *
@@ -211,7 +207,6 @@ function checkVerticalDown(gameField, width, height, x, y)
     return status, result
 end
 
-
 -- * A * *   * A * *
 -- * A * *   * * * *
 -- * * * *   * A * *
@@ -289,6 +284,9 @@ function checkVerticalInner(gameField, width, height, x, y)
     
     return status, result
 end
+
+--[[
+
 
 function checkAllHorizontal(gameField, width, height, x, y)
     local allResults = {}
@@ -398,6 +396,8 @@ end
 
 
 
+--]]
+
 function checkVerticalSwap(gameField, width, height, x, y)
     local allResults = {}
     local allStatus = false
@@ -505,8 +505,7 @@ end
 
 return {
     potentialMatchTypes = potentialMatchTypes,
-
-    findAllPotentialMatches3 = findAllPotentialMatches3,
+    -- findAllPotentialMatches3 = findAllPotentialMatches3,
     findAllPotentialMatches3Swap = findAllPotentialMatches3Swap,
 }
 

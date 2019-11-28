@@ -1,8 +1,8 @@
-
--- local matchTypes = {
---     matchHorizontal = "MatchHorizontal",
---     matchVertical = "MatchVertical",
--- }
+local matchTypes = {
+    -- matchHorizontal = "MatchHorizontal",
+    -- matchVertical = "MatchVertical",
+    match = "Match",
+}
 
 --[[
 function findMatch3OrGreaterHorizontal(gameField, width, height, x, y)
@@ -247,7 +247,7 @@ function match3OrGreater(gameField, data)
         return a.count > b.count --from biggest to lowest
     end)
 
-    return "Match", allMatches
+    return matchTypes.match, allMatches
 end
 
 

@@ -19,12 +19,14 @@ local function createMetatableForEnumValue(enumName, enumType, enumValue, enumVa
             value = enumValue,
             index = enumValueIndex,
             type = enumType,
+            --[[
             isSameEnumType = function (other)
                 return type(other) == "table" and other.type ~= nil and getmetatable(other).__type == enumType
             end
+            --]]
+
         },
         __newindex = function ()
-            print("in enum value, newindex")
             return nil
         end,
         __eq = function (this, other)
@@ -42,7 +44,6 @@ local function createMetatableForEnumProxy(enumName, enumLength)
     return {
         __index = function (t, k)
             -- local value = t[k]
-            print("in Proxy index, go to rawget")
             local value = rawget(t, k)
             if value == nil then
                 error "Invalid key"
@@ -50,7 +51,6 @@ local function createMetatableForEnumProxy(enumName, enumLength)
             return value
         end,
         __newindex = function (t, k, v)
-            print("in Proxy newindex")
             error("Attempt to update a read-only table", 2)
         end,
         __tostring = function ()
@@ -71,7 +71,6 @@ local function new(name, values)
     -- find duplicates
     local checkedValues = {}
     for _, value in ipairs(values) do
-        print("enum"..type(value).." "..value) ---!!!!!!!!!!!!!!!!!!!!!!
         if type(value) ~= "string" then
             error("Invalid enum value type: string expected", 2)
         end
@@ -84,7 +83,6 @@ local function new(name, values)
     end
 
     for enumIndex, enumValue in ipairs(values) do
-        -- PROBLEM, THAT CANNOT BE SOLVED: in objects or in debug mode enum's values will be shown as nil
         local o = {}
 
         local mt = createMetatableForEnumValue(name, enumType, enumValue, enumIndex)
@@ -101,11 +99,12 @@ local function new(name, values)
         --     end
         -- end
         
-        print("enum index and value " .. enumIndex .. " " .. enumValue)
-
+        --[[
         function o.enumType(o)
             return getmetatable(o).__type
         end
+        --]]
+
     end
 
 
@@ -117,7 +116,6 @@ local function new(name, values)
     return setmetatable({}, {
         __index = proxy,
         __newindex = function(table, key, value)
-            print("proxy of proxy newindex")
             error("Attempt to modify read-only table")
         end,
         __metatable = false,

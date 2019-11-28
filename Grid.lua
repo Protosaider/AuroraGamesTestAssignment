@@ -1,8 +1,6 @@
-local Grid = {
-
-}
-
 local NIL = "nil"
+
+local Grid = {}
 
 function Grid:new(o, width, height, defaultValue)
     o = o or {}
@@ -110,16 +108,7 @@ function Grid:getColumn(x)
 end
 
 local EDirection = require("EDirection")
-
-local directionVectors = {}
-directionVectors[EDirection.Up] =           {0, -1}
-directionVectors[EDirection.Right]  =       {1, 0}
-directionVectors[EDirection.Down] =         {0, 1}
-directionVectors[EDirection.Left] =         {-1, 0}
-directionVectors[EDirection.UpperRight] =   {1, -1}
-directionVectors[EDirection.LowerRight] =   {1, 1}
-directionVectors[EDirection.LowerLeft] =    {-1, 1}
-directionVectors[EDirection.UpperLeft] =    {-1, -1}
+local EDirectionHelper = require("EDirectionHelper")
 
 function Grid:getNeighbour(x, y, direction)
     assert(type(direction) == type(EDirection), "direction value is not a EDirection")
@@ -130,8 +119,10 @@ function Grid:getNeighbour(x, y, direction)
         error "Coordinates are outside the grid"
     end
 
-    local neighbourX = x + directionVectors[direction][1]
-    local neighbourY = y + directionVectors[direction][2]
+    local offset = EDirectionHelper.offset(direction)
+
+    local neighbourX = x + offset[1]
+    local neighbourY = y + offset[2]
 
     result, value = self:getValueSafe(neighbourX, neighbourY)
 
@@ -143,8 +134,9 @@ function Grid:getNeighbour(x, y, direction)
 end
 
 function Grid:swapSafe(fromX, fromY, direction)
-    local toX = fromX + directionVectors[direction][1]
-    local toY = fromY + directionVectors[direction][2]
+    local offset = EDirectionHelper.offset(direction)
+    local toX = fromX + offset[1]
+    local toY = fromY + offset[2]
     return self:swapSafe(fromX, fromY, toX, toY)
 end
 
@@ -152,7 +144,6 @@ function Grid:swapSafe(fromX, fromY, toX, toY)
     local result, temp = self:getValueSafe(fromX, fromY)
 
     if not result then
-        -- error "Coordinates (from) are outside the grid"
         return false, "From"
     end
 
@@ -160,7 +151,6 @@ function Grid:swapSafe(fromX, fromY, toX, toY)
 
     if not result then
         self.values[fromX][fromY] = temp
-        -- error "Coordinates (to) are outside the grid"
         return false, "To"
     end
 
@@ -170,8 +160,9 @@ function Grid:swapSafe(fromX, fromY, toX, toY)
 end
 
 function Grid:swap(fromX, fromY, direction)
-    local toX = fromX + directionVectors[direction][1]
-    local toY = fromY + directionVectors[direction][2]
+    local offset = EDirectionHelper.offset(direction)
+    local toX = fromX + offset[1]
+    local toY = fromY + offset[2]
     return self:swap(fromX, fromY, toX, toY)
 end
 
@@ -196,28 +187,7 @@ function Grid:findValues(filter)
     return values
 end
 
-function Grid:iterate(predicate)
-    assert(type(predicate) == "function", "Predicate must be a function")
-    for y = 1, self.height do
-        for x = 1, self.width do
-            predicate(self.values[x][y])
-        end
-    end
-end
-
-function Grid:iterateRow(y, predicate)
-    assert(type(predicate) == "function", "Predicate must be a function")
-
-    if self:isOutside(1, y) then
-        error "Y coordinate is outside of grid"
-    end
-
-    for x = 1, self.width do
-        predicate(self.values[x][y])
-    end
-end
-
--- ?????????? I suppose, it's okay
+-- @TODO Check later / read more (I suppose, it's working, never done it before)
 function Grid:getIterator()
     local initialState = {x = 0, y = 1}
 
@@ -237,6 +207,27 @@ function Grid:getIterator()
     end
 
     return iterator, initialState
+end
+
+function Grid:iterate(predicate)
+    assert(type(predicate) == "function", "Predicate must be a function")
+    for y = 1, self.height do
+        for x = 1, self.width do
+            predicate(self.values[x][y])
+        end
+    end
+end
+
+function Grid:iterateRow(y, predicate)
+    assert(type(predicate) == "function", "Predicate must be a function")
+
+    if self:isOutside(1, y) then
+        error "Y coordinate is outside of grid"
+    end
+
+    for x = 1, self.width do
+        predicate(self.values[x][y])
+    end
 end
 
 function Grid:getRandom()
@@ -268,11 +259,5 @@ function Grid:shuffle()
     end
 
 end
-
-
--- --verticalAndHorizontal, Diagonal, Both
--- function Grid:getNeighbours(x, y, neighboursLocation)
-    
--- end
 
 return Grid

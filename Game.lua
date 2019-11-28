@@ -1,7 +1,13 @@
-local N = 10
-local M = 12
+-- Settings
+local GameField = require("GameField")
+local GameFieldVisualizer = require("GameFieldVisualizer")
+local EDirectionHelper = require("EDirectionHelper")
+
 
 math.randomseed(1000)
+
+local N = 10
+local M = 12
 
 local indexSpace = ' '
 local separatorItemVertical = '|'
@@ -9,28 +15,22 @@ local separatorItemHorizontal = '-'
 local newline = '\n'
 local nilItem = '*'
 
-local sleepTime = 0.55
+local dumpSleepTime = 0.55
 
-local function sleep(s)
-    -- io.stdin:read("l")
-    local ntime = os.clock() + s
-    repeat until os.clock() > ntime
-end
-
-
-local GameField = require("GameField")
-local GameFieldVisualizer = require("GameFieldVisualizer")
-
-local EDirection = require("EDirection")
-local EDirectionHelper = require("EDirectionHelper")
 
 local gameField = GameField:new(N, M)
 local visualizer = GameFieldVisualizer:new(N, M, indexSpace, separatorItemVertical, separatorItemHorizontal, newline, nilItem)
 
+
+local function sleep(s)
+    local ntime = os.clock() + s
+    repeat until os.clock() > ntime
+end
+
 local function tick()
     local isWaitingForInput = gameField:tick()
     if not isWaitingForInput then
-        sleep(sleepTime)
+        sleep(dumpSleepTime)
     end
     return isWaitingForInput
 end

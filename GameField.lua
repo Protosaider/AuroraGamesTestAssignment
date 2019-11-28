@@ -2,13 +2,11 @@ local Crystal = require("Crystal")
 local ECrystalType = require("ECrystalType")
 local ECrystalColor = require("ECrystalColor")
 local EDirection = require("EDirection")
-local EDirectionHelper = require("EDirectionHelper")
 local Grid = require("Grid")
 
 local GameFieldFindMatches = require("GameFieldFindMatches")
 local GameFieldFindPotentialMatches = require("GameFieldFindPotentialMatches")
 
-local Set = require("Set")
 
 -- I'll try to use DualRepresentation p. 197 RobertoIerusalimschy-Pro.InLua
 -- Use weak keys?
@@ -43,14 +41,18 @@ local function createRandomCrystal(restrictedCrystals)
 end
 
 
-local function switchState(o, state) GameFieldData[o].state = state end
-local function state(o) return GameFieldData[o].state end
-local still = "Still"
-local endMove = "EndMove"
-local tryToSwap = "TryToSwap"
-local tryToUndoSwap = "TryToUndoSwap"
-local undoSwap = "UndoSwap"
-local changing = "Changing"
+local function switchState(o, state) GameFieldData[o].currentState = state end
+local function currentState(o) return GameFieldData[o].currentState end
+
+local state = {
+    still = "Still",
+    endMove = "EndMove",
+    tryToSwap = "TryToSwap",
+    tryToUndoSwap = "TryToUndoSwap",
+    undoSwap = "UndoSwap",
+    changing = "Changing",
+}
+
 
 function GameField:new(width, height)
     local o = {}
@@ -62,14 +64,9 @@ function GameField:new(width, height)
     setmetatable(o, self)
 
     GameFieldData[o] = {
-        state = still,
-
+        currentState = state.still,
         potentialMatch = {},
-
         moveData = {},
-
-        --@TODO Stop matching for moving items?
-        --@TODO Match for null items?
         toCheckMatch = {},
         toModify = {},
         toMove = {},
@@ -113,21 +110,21 @@ function FindAllPotentialMatches(gameField)
     return hasMatches
 end
 
-
+--Enulates external file, like GameFieldPotentialMatches
 local onMoveFunctionsHolder = {
     Swap = function (o, from, to)
         o.grid:swap(from.x, from.y, to.x, to.y)
-        -- GameFieldData[gameField].toCheckMatch[#GameFieldData[o].toCheckMatch+1] = from
-        -- GameFieldData[gameField].toCheckMatch[#GameFieldData[o].toCheckMatch+1] = to
     end,
 }
 function MakeMove(gameField, moveData)
-    -- add here functions from additional module or smth like this
+    -- add here functions from additional module or smth like this\
+    local functionType
     if moveData.from.value.type == ECrystalType.Base and
         moveData.to.value.type == ECrystalType.Base
      then
-        return onMoveFunctionsHolder["Swap"](gameField, moveData.from, moveData.to)
+        functionType = "Swap"
     end
+    return onMoveFunctionsHolder[functionType](gameField, moveData.from, moveData.to)
 end
 
 function CheckSwapMatches(gameField)
@@ -136,9 +133,9 @@ function CheckSwapMatches(gameField)
     local direction = GameFieldData[gameField].moveData.from.direction
 
     if direction == EDirection.Up or direction == EDirection.Down then
-        direction = "SwapVertical"
+        direction = GameFieldFindPotentialMatches.potentialMatchTypes.swapVertical
     else
-        direction = "SwapHorizontal"
+        direction = GameFieldFindPotentialMatches.potentialMatchTypes.swapHorizontal
     end
 
     for _, value in ipairs(GameFieldData[gameField].potentialMatch[direction]) do
@@ -159,7 +156,7 @@ local onCheckMatchesFunctionsHolder = {
     Match = function (o, result)
         if #result > 0 then
             for _, match in ipairs(result) do
-                for key, value in ipairs(match.values) do
+                for _, value in ipairs(match.values) do
                     GameFieldData[o].toModify[#GameFieldData[o].toModify+1] = value
                 end
             end
@@ -167,11 +164,14 @@ local onCheckMatchesFunctionsHolder = {
     end
 }
 function CheckMatches(gameField, toCheckMatch)
+
+    local matchType
+    local result
     -- add here functions from additional module or smth like this
     for key, value in ipairs(toCheckMatch) do
-        local matchType, result = GameFieldFindMatches.match3OrGreater(gameField, value)
-        -- then next function, than deside, which function should be used (or reorder findMatches function in such way)
+        matchType, result = GameFieldFindMatches.match3OrGreater(gameField, value)
 
+        -- then next function, than deside, which function should be used (or reorder findMatches function in such way)
         onCheckMatchesFunctionsHolder[matchType](gameField, result)
 
         toCheckMatch[key] = nil
@@ -188,13 +188,18 @@ local onModifyFunctionsHolder = {
     end,
 }
 function Modify(gameField)
+
     local destroyed = {}
+    local functionType
+    
     for key, value in ipairs(GameFieldData[gameField].toModify) do
 
         -- add here functions from additional module or smth like this
         if value.value.type == ECrystalType.Base
         then
-            local result = onModifyFunctionsHolder["DestroyBase"](gameField, value)
+            functionType = "DestroyBase"
+            
+            local result = onModifyFunctionsHolder[functionType](gameField, value)
             destroyed[#destroyed+1] = result
         end
 
@@ -209,31 +214,31 @@ function Modify(gameField)
         return a.y > b.y
     end)
 
-    local lowest = {}
+    local lowestDestroyed = {}
     local x = 0
     for _, value in ipairs(destroyed) do
         if x < value.x then
             x = value.x
-            lowest[#lowest+1] = {x = value.x, y = value.y, countEmpty = 1}
+            lowestDestroyed[#lowestDestroyed+1] = {x = value.x, y = value.y, countEmpty = 1}
         else
-            lowest[#lowest].countEmpty = lowest[#lowest].countEmpty + 1
+            lowestDestroyed[#lowestDestroyed].countEmpty = lowestDestroyed[#lowestDestroyed].countEmpty + 1
         end
     end
 
-    for key, value in ipairs(lowest) do
+    for key, value in ipairs(lowestDestroyed) do
         for keyMove, valueMove in ipairs(GameFieldData[gameField].toMove) do
             if valueMove.x == value.x then
                 if value.y > valueMove.y then
                     GameFieldData[gameField].toMove[keyMove].y = value.y
                     GameFieldData[gameField].toMove[keyMove].countEmpty = valueMove.countEmpty + value.countEmpty
-                    lowest[key] = nil
+                    lowestDestroyed[key] = nil
                     break
                 end
             end
         end
     end
 
-    for _, value in ipairs(lowest) do
+    for _, value in ipairs(lowestDestroyed) do
         GameFieldData[gameField].toMove[#GameFieldData[gameField].toMove+1] = value
     end
 
@@ -252,7 +257,7 @@ function Scroll(gameField)
         
         for y = value.y, 1, -1 do
             local temp = gameField.grid:getValue(value.x, y)
-            if temp == nil then                             -- @BUG May fail, need to check
+            if temp == nil then
                 GameFieldData[gameField].toMove[key].y = y
                 break
             end
@@ -269,7 +274,7 @@ end
 
 
 function FindAllMatches(gameField)
-    -- add here functions from additional module or smth like this
+    -- can add here functions from additional module or smth like this
     local allMatches
     allMatches = GameFieldFindMatches.findAllMatches3OrGreater(gameField)
     return allMatches
@@ -299,47 +304,46 @@ function GameField:move(from, to)
 
     GameFieldData[self].moveData = data
 
-    switchState(self, tryToSwap)
+    switchState(self, state.tryToSwap)
 
 end
 
 function GameField:tick()
 
-    if state(self) == still then
+    if currentState(self) == state.still then
         return true
     end
 
-    if state(self) == tryToSwap then
+    if currentState(self) == state.tryToSwap then
         MakeMove(self, GameFieldData[self].moveData)
-        switchState(self, tryToUndoSwap)
+        switchState(self, state.tryToUndoSwap)
         return false
     end
 
-    if state(self) == tryToUndoSwap then
+    if currentState(self) == state.tryToUndoSwap then
         local swap = CheckSwapMatches(self)
         if not swap then
-            switchState(self, undoSwap)
+            switchState(self, state.undoSwap)
         else
-            switchState(self, changing)
+            switchState(self, state.changing)
         end
     end
 
-    if state(self) == undoSwap then
+    if currentState(self) == state.undoSwap then
         MakeMove(self, GameFieldData[self].moveData)
-        switchState(self, still)
+        switchState(self, state.still)
         return false
     end
 
-    if state(self) == changing then
+    if currentState(self) == state.changing then
 
-        --check matches for all
+        --check matches for each cell
         CheckMatches(self, GameFieldData[self].toCheckMatch)
 
-        --they go to toModify
-        --modification
+        --they go to toModify (to be destroyed, or transformed, or else)
         Modify(self)
 
-        --move crystals
+        --move crystals and spawn new
         Scroll(self)
 
         local hasToCheckMatches = #GameFieldData[self].toCheckMatch > 0
@@ -347,25 +351,24 @@ function GameField:tick()
         local hasToMove = #GameFieldData[self].toMove > 0
 
         if not (hasToCheckMatches or hasToModify or hasToMove) then
-            switchState(self, endMove)
+            switchState(self, state.endMove)
         end
 
         return false
     end
 
-    if state(self) == endMove then
+    if currentState(self) == state.endMove then
         local hasPotentialMatches = FindAllPotentialMatches(self)
 
         while not hasPotentialMatches do
             self:mix()
             hasPotentialMatches = FindAllPotentialMatches(self)
         end
-        switchState(self, still)
+        switchState(self, state.still)
         return true
     end
 
 end
-
 
 
 local function contains(table, item)

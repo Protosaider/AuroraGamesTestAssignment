@@ -1,13 +1,8 @@
 -- @TODO Make readonly struct
-
 local ECrystalType = require("ECrystalType")
 local ECrystalColor = require("ECrystalColor")
 
-local Crystal = {
-    -- type = "Base",
-    -- color = '@'
-}
-
+local Crystal = {}
 
 -- local OnCrystalDestroyed = {}
 -- setmetatable(OnCrystalDestroyed, {__mode = "k"})

@@ -1,4 +1,3 @@
-
 local Game = require("Game")
 local EDirection = require("EDirection")
 
@@ -37,7 +36,6 @@ repeat
                 directionTo = EDirection.Down
             end
 
-            --@TODO Add +1 for each, cause coordinates shown as 0..N-1
             Game.move({x = fromX , y = fromY }, directionTo, commandMove)
         else
             Game.move(nil, nil)
