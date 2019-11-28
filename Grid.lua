@@ -38,11 +38,12 @@ function Grid:isOutside(x, y)
     return false
 end
 
---!!!!!!!!!!   !!!!!!!!   !!!!!!!!!!!!!  !!!!!!!!!!  !!!!!!!!!!!!  !!!!!!!!!!  !!!!!!!!!!!!!
 function Grid:getValue(x, y)
-    --return self.values[x][y]  
     local value = self.values[x][y]
-    return value == NIL and nil or value
+    if value == NIL then
+        return nil
+    end
+    return value
 end
 
 function Grid:getValueSafe(x, y)
@@ -238,6 +239,11 @@ function Grid:getIterator()
     return iterator, initialState
 end
 
+function Grid:getRandom()
+    local x = math.random(self.width)
+    local y = math.random(self.height)
+    return { x = x, y = y, value = self.values[math.random(self.width)][math.random(self.height)] }
+end
 
 -- Fisher-Yates
 function Grid:shuffle()

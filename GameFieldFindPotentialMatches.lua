@@ -26,7 +26,8 @@ function checkHorizontalLeft(gameField, width, height, x, y)
                     status = true
                     result[#result+1] = {from = {x = x - 1, y = y + 1}, to = {x = x - 1, y = y}}
                 end
-            elseif y > 1 then
+            end
+            if y > 1 then
                 local upperLeft = gameField.grid:getValue(x - 1, y - 1)
                 if (center.type == upperLeft.type) and (center.color == upperLeft.color) then
                     status = true
@@ -56,7 +57,8 @@ function checkHorizontalRight(gameField, width, height, x, y)
                     status = true
                     result[#result+1] = {from = {x = x + 1, y = y + 1}, to = {x = x + 1, y = y}}
                 end
-            elseif y > 1 then
+            end
+            if y > 1 then
                 local upperRight = gameField.grid:getValue(x + 1, y - 1)
                 if (center.type == upperRight.type) and (center.color == upperRight.color) then
                     status = true
@@ -104,6 +106,48 @@ function checkHorizontalCenter(gameField, width, height, x, y)
     return status, result
 end
 
+-- * A * *   * * * *
+-- A * A *   A * A *
+-- * * * *   * A * *
+function checkHorizontalInner(gameField, width, height, x, y)
+    local status = false
+    local result = {}
+
+    if x < width and x > 1 then
+        local center = gameField.grid:getValue(x, y)
+
+        if y < height then
+            local lowerLeft = gameField.grid:getValue(x - 1, y + 1)
+            local lowerRight = gameField.grid:getValue(x + 1, y + 1)
+
+            if  (center.type == lowerLeft.type) and
+                (center.color == lowerLeft.color) and
+                (center.type == lowerRight.type) and
+                (center.color == lowerRight.color)
+                then
+                    status = true
+                    result[#result+1] = {from = {x = x, y = y}, to = {x = x, y = y + 1}}
+            end
+        end
+
+        if y > 1 then
+            local upperLeft = gameField.grid:getValue(x - 1, y - 1)
+            local upperRight = gameField.grid:getValue(x + 1, y - 1)
+
+            if  (center.type == upperLeft.type) and
+                (center.color == upperLeft.color) and
+                (center.type == upperRight.type) and
+                (center.color == upperRight.color)
+                then
+                    status = true
+                    result[#result+1] = {from = {x = x, y = y}, to = {x = x, y = y - 1}}
+            end
+        end
+    end
+    
+    return status, result
+end
+
 
 -- A * * *   * * A *
 -- * A * *   * A * *
@@ -122,7 +166,8 @@ function checkVerticalUp(gameField, width, height, x, y)
                     status = true
                     result[#result+1] = {from = {x = x - 1, y = y - 1}, to = {x = x, y = y - 1}}
                 end
-            elseif x < width then
+            end
+            if x < width then
                 local upperRight = gameField.grid:getValue(x + 1, y - 1)
                 if (center.type == upperRight.type) and (center.color == upperRight.color) then
                     status = true
@@ -152,7 +197,8 @@ function checkVerticalDown(gameField, width, height, x, y)
                     status = true
                     result[#result+1] = {from = {x = x - 1, y = y + 1}, to = {x = x, y = y + 1}}
                 end
-            elseif x < width then
+            end
+            if x < width then
                 local lowerRight = gameField.grid:getValue(x + 1, y + 1)
                 if (center.type == lowerRight.type) and (center.color == lowerRight.color) then
                     status = true
@@ -202,6 +248,48 @@ function checkVerticalCenter(gameField, width, height, x, y)
     return status, result
 end
 
+-- * A * *   * A * *
+-- * * A *   A * * *
+-- * A * *   * A * *
+function checkVerticalInner(gameField, width, height, x, y)
+    local status = false
+    local result = {}
+
+    if y < height and y > 1 then
+        local center = gameField.grid:getValue(x, y)
+
+        if x > 1 then
+            local lowerLeft = gameField.grid:getValue(x - 1, y + 1)
+            local upperLeft = gameField.grid:getValue(x - 1, y - 1)
+
+            if  (center.type == lowerLeft.type) and
+                (center.color == lowerLeft.color) and
+                (center.type == upperLeft.type) and
+                (center.color == upperLeft.color)
+                then
+                    status = true
+                    result[#result+1] = {from = {x = x, y = y}, to = {x = x - 1, y = y}}
+            end
+        end
+
+        if x < width then
+            local lowerRight = gameField.grid:getValue(x + 1, y + 1)
+            local upperRight = gameField.grid:getValue(x + 1, y - 1)
+
+            if  (center.type == lowerRight.type) and
+                (center.color == lowerRight.color) and
+                (center.type == upperRight.type) and
+                (center.color == upperRight.color)
+                then
+                    status = true
+                    result[#result+1] = {from = {x = x, y = y}, to = {x = x + 1, y = y}}
+            end
+        end
+    end
+    
+    return status, result
+end
+
 function checkAllHorizontal(gameField, width, height, x, y)
     local allResults = {}
     local allStatus = false
@@ -221,6 +309,13 @@ function checkAllHorizontal(gameField, width, height, x, y)
         end
     end
     status, result = checkHorizontalCenter(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
+    status, result = checkHorizontalInner(gameField, width, height, x, y)
     if status then
         allStatus = true
         for _, value in ipairs(result) do
@@ -255,10 +350,17 @@ function checkAllVertical(gameField, width, height, x, y)
             allResults[#allResults+1] = value
         end
     end
+    status, result = checkVerticalInner(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
     return allStatus, allResults
 end
 
-function findPotentialMatch3(gameField, width, height)
+function findAllPotentialMatches3(gameField, width, height)
 
     local allPotentialMatches = {}
     local allHorizontal = {}
@@ -321,6 +423,13 @@ function checkVerticalSwap(gameField, width, height, x, y)
             allResults[#allResults+1] = value
         end
     end
+    status, result = checkHorizontalInner(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
     return allStatus, allResults
 end
 
@@ -349,11 +458,17 @@ function checkHorizontalSwap(gameField, width, height, x, y)
             allResults[#allResults+1] = value
         end
     end
-
+    status, result = checkVerticalInner(gameField, width, height, x, y)
+    if status then
+        allStatus = true
+        for _, value in ipairs(result) do
+            allResults[#allResults+1] = value
+        end
+    end
     return allStatus, allResults
 end
 
-function findPotentialMatch3Swap(gameField)
+function findAllPotentialMatches3Swap(gameField)
 
     local allPotentialMatches = {}
     local allHorizontal = {}
@@ -391,7 +506,7 @@ end
 return {
     potentialMatchTypes = potentialMatchTypes,
 
-    findPotentialMatch3 = findPotentialMatch3,
-    findPotentialMatch3Swap = findPotentialMatch3Swap,
+    findAllPotentialMatches3 = findAllPotentialMatches3,
+    findAllPotentialMatches3Swap = findAllPotentialMatches3Swap,
 }
 

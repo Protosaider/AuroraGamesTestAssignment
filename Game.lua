@@ -9,10 +9,10 @@ local separatorItemHorizontal = '-'
 local newline = '\n'
 local nilItem = '*'
 
---@TODO Put inside the tick() function
-local sleepTime = 1.25
+local sleepTime = 0.55
 
 local function sleep(s)
+    -- io.stdin:read("l")
     local ntime = os.clock() + s
     repeat until os.clock() > ntime
 end
@@ -39,7 +39,7 @@ local function init()
     gameField:init()
 end
 
-local function move(from, to, command)
+local function move(from, to)
     if from == nil then
         visualizer:setMessage("Wrong input")
         return
@@ -61,7 +61,7 @@ local function move(from, to, command)
     }
 
     local msg = gameField:move(fromData, toData)
-    visualizer:setMessage(msg or command)
+    visualizer:setMessage(msg or "")
 end
 
 local function dump()

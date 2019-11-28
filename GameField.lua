@@ -68,6 +68,8 @@ function GameField:new(width, height)
 
         moveData = {},
 
+        --@TODO Stop matching for moving items?
+        --@TODO Match for null items?
         toCheckMatch = {},
         toModify = {},
         toMove = {},
@@ -101,9 +103,15 @@ function GameField:init()
         self.grid:setValue(value.x, value.y, createRandomCrystal(restrictedCrystals))
     end
 
-    FindPotentialMatches(self)
+    FindAllPotentialMatches(self)
 end
 
+
+function FindAllPotentialMatches(gameField)
+    local hasMatches
+    hasMatches, GameFieldData[gameField].potentialMatch = GameFieldFindPotentialMatches.findAllPotentialMatches3Swap(gameField)
+    return hasMatches
+end
 
 
 local onMoveFunctionsHolder = {
@@ -120,10 +128,6 @@ function MakeMove(gameField, moveData)
      then
         return onMoveFunctionsHolder["Swap"](gameField, moveData.from, moveData.to)
     end
-end
-
-function FindPotentialMatches(gameField)
-    _, GameFieldData[gameField].potentialMatch = GameFieldFindPotentialMatches.findPotentialMatch3Swap(gameField)
 end
 
 function CheckSwapMatches(gameField)
@@ -150,7 +154,7 @@ function CheckSwapMatches(gameField)
 end
 
 
-local onFindMatchesFunctionsHolder = {
+local onCheckMatchesFunctionsHolder = {
     --{ x = x + dX, y = y, value = previous }
     Match = function (o, result)
         if #result > 0 then
@@ -162,16 +166,17 @@ local onFindMatchesFunctionsHolder = {
         end
     end
 }
-function FindMatches(gameField)
+function CheckMatches(gameField, toCheckMatch)
     -- add here functions from additional module or smth like this
-    for _, value in ipairs(GameFieldData[gameField].toCheckMatch) do
+    for key, value in ipairs(toCheckMatch) do
         local matchType, result = GameFieldFindMatches.match3OrGreater(gameField, value)
         -- then next function, than deside, which function should be used (or reorder findMatches function in such way)
 
-        onFindMatchesFunctionsHolder[matchType](gameField, result)
+        onCheckMatchesFunctionsHolder[matchType](gameField, result)
+
+        toCheckMatch[key] = nil
     end
 end
-
 
 
 
@@ -184,7 +189,7 @@ local onModifyFunctionsHolder = {
 }
 function Modify(gameField)
     local destroyed = {}
-    for _, value in ipairs(GameFieldData[gameField].toModify) do
+    for key, value in ipairs(GameFieldData[gameField].toModify) do
 
         -- add here functions from additional module or smth like this
         if value.value.type == ECrystalType.Base
@@ -192,6 +197,8 @@ function Modify(gameField)
             local result = onModifyFunctionsHolder["DestroyBase"](gameField, value)
             destroyed[#destroyed+1] = result
         end
+
+        GameFieldData[gameField].toModify[key] = nil
     end
 
     --handle destroyed objects
@@ -213,11 +220,25 @@ function Modify(gameField)
         end
     end
 
+    for key, value in ipairs(lowest) do
+        for keyMove, valueMove in ipairs(GameFieldData[gameField].toMove) do
+            if valueMove.x == value.x then
+                if value.y > valueMove.y then
+                    GameFieldData[gameField].toMove[keyMove].y = value.y
+                    GameFieldData[gameField].toMove[keyMove].countEmpty = valueMove.countEmpty + value.countEmpty
+                    lowest[key] = nil
+                    break
+                end
+            end
+        end
+    end
+
     for _, value in ipairs(lowest) do
         GameFieldData[gameField].toMove[#GameFieldData[gameField].toMove+1] = value
     end
 
 end
+
 
 
 function Scroll(gameField)
@@ -231,7 +252,7 @@ function Scroll(gameField)
         
         for y = value.y, 1, -1 do
             local temp = gameField.grid:getValue(value.x, y)
-            if temp == nil then --will fail, cause return "nil"
+            if temp == nil then                             -- @BUG May fail, need to check
                 GameFieldData[gameField].toMove[key].y = y
                 break
             end
@@ -240,14 +261,19 @@ function Scroll(gameField)
 
         GameFieldData[gameField].toMove[key].countEmpty = value.countEmpty - 1
 
-        -- if GameFieldData[gameField].toMove[key].count == 0 then delete end
-
+        if GameFieldData[gameField].toMove[key].countEmpty == 0 then
+            GameFieldData[gameField].toMove[key] = nil
+        end
     end
 end
 
 
-local onEndMoveFunctions = FindPotentialMatches
-
+function FindAllMatches(gameField)
+    -- add here functions from additional module or smth like this
+    local allMatches
+    allMatches = GameFieldFindMatches.findAllMatches3OrGreater(gameField)
+    return allMatches
+end
 
 function GameField:move(from, to)
 
@@ -307,7 +333,7 @@ function GameField:tick()
     if state(self) == changing then
 
         --check matches for all
-        FindMatches(self)
+        CheckMatches(self, GameFieldData[self].toCheckMatch)
 
         --they go to toModify
         --modification
@@ -316,26 +342,105 @@ function GameField:tick()
         --move crystals
         Scroll(self)
 
-        --if all tables empty => switch to endMove
+        local hasToCheckMatches = #GameFieldData[self].toCheckMatch > 0
+        local hasToModify = #GameFieldData[self].toModify > 0
+        local hasToMove = #GameFieldData[self].toMove > 0
+
+        if not (hasToCheckMatches or hasToModify or hasToMove) then
+            switchState(self, endMove)
+        end
 
         return false
     end
 
     if state(self) == endMove then
-        onEndMoveFunctions(self)
-        --check if has moves
-        --if not => call mix
+        local hasPotentialMatches = FindAllPotentialMatches(self)
+
+        while not hasPotentialMatches do
+            self:mix()
+            hasPotentialMatches = FindAllPotentialMatches(self)
+        end
         switchState(self, still)
-        return false
+        return true
     end
 
 end
 
 
+
+local function contains(table, item)
+    for _, value in ipairs(table) do
+        if value == item then
+            return true
+        end
+    end
+    return false
+end
+local function remove(table, item)
+    for key, value in ipairs(table) do
+        if value == item then
+            local temp = value
+            table[key] = nil
+            return temp
+        end
+    end
+    return nil
+end
+
 function GameField:mix()
--- for each cell, we get a random tile type that we compare with the previous 2 cells left [row][col-1] & [row][col-2] 
--- as well as with the 2 cells down [row-1][col] & [row-2][col];
--- if the random tile type is the same as for any of these other cells, we loop until there is no matching.
+
+    self.grid:shuffle()
+
+    while true do
+        --{ type, color, values = {x, y} }
+        local allMatches = FindAllMatches(self)
+
+        if #allMatches == 0 then
+            break
+        end
+
+        local item, from, to
+        local acceptableColors
+        
+        for _, match in ipairs(allMatches) do
+            acceptableColors = {}
+
+            for i = 1, #ECrystalColor do
+                local color = ECrystalColor[i]
+                if match.color ~= color then
+                    acceptableColors[#acceptableColors+1] = color
+                end
+            end
+            
+            while true do
+                while true do
+                    item = self.grid:getRandom()
+                    from = {x = item.x, y = item.y}
+                    if not contains(match.values, from) and contains(acceptableColors, item.value.color) then
+                        break
+                    end
+                end
+        
+                to = match.values[math.random(#match.values)]
+
+                CheckMatches(self, {from})
+                if #GameFieldData[self].toModify ~= 0 then
+                    remove(acceptableColors, item.value.color)
+                end
+        
+                CheckMatches(self, {to})
+                
+                if #GameFieldData[self].toModify == 0 then
+                    break
+                else
+                    for key, _ in ipairs(GameFieldData[self].toModify) do
+                        GameFieldData[self].toModify[key] = nil
+                    end
+                end
+            end
+        end
+    end
+
 end
 
 
